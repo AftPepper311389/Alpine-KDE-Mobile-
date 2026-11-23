@@ -28,12 +28,14 @@ jobs:
       - name: Pack rootfs with parallel xz on the ARM64 host
         run: |
           mkdir -p .work/alpine-assets
-          tar --numeric-owner -I 'xz -T0 -6' \
+          sudo chown "$(id -u):$(id -g)" .work/alpine-assets
+          sudo tar --numeric-owner -I 'xz -T0 -6' \
             -cf "$GITHUB_WORKSPACE/.work/alpine-assets/alpine-rootfs-aarch64.tar.xz" \
             -C "$GITHUB_WORKSPACE/.work/alpine-rootfs" .
           sha256sum .work/alpine-assets/alpine-rootfs-aarch64.tar.xz \
             > .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
-          du -sh .work/alpine-rootfs .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
+          sudo du -sh .work/alpine-rootfs
+          du -sh .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
 
       - name: Verify Alpine rootfs payload
         run: |
