@@ -219,7 +219,7 @@ gradle = gradle.replace('applicationId = "com.doro.terminal.shell"',
                         'applicationId = "org.alpinekde.mobile"')
 gradle = gradle.replace('versionName = "1.1.9Debug"', 'versionName = "1.0.0-alpine"')
 gradle = gradle.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")')
-gradle = re.sub(r"(?s)\\n// Force use of ARM64 binaries for AAPT2 in Proot environment.*?\\n\\ndependencies \\{", "\\n\\ndependencies {", gradle, count=1)
+gradle = re.sub(r"(?s)\n// Force use of ARM64 binaries for AAPT2 in Proot environment.*?\n\ndependencies \{", "\n\ndependencies {", gradle, count=1)
 write(gradle_file, gradle)
 
 print("Patched doroUbuntu Android runtime for Alpine 3.21 + KDE Plasma X11.")
