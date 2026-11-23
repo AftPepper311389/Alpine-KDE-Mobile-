@@ -9,8 +9,8 @@ rm -rf "$ROOTFS"
 mkdir -p "$ROOTFS" "$ASSETS" /workspace/.work
 
 cat > "$REPOSITORIES" <<'EOF'
-https://dl-cdn.alpinelinux.org/alpine/v3.24/main
-https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+https://dl-cdn.alpinelinux.org/alpine/v3.22/main
+https://dl-cdn.alpinelinux.org/alpine/v3.22/community
 EOF
 
 # Install genuine ARM64 Alpine packages in a native ARM64 container.
@@ -19,7 +19,7 @@ apk --root "$ROOTFS" \
     --arch aarch64 \
     --keys-dir /etc/apk/keys \
     --repositories-file "$REPOSITORIES" \
-    add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus sudo gcompat \
+    add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus dbus-x11 sudo gcompat \
         plasma-desktop plasma-workspace kwin konsole dolphin xwayland \
         mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
         libxkbcommon xkeyboard-config
@@ -50,14 +50,16 @@ APPLICATIONS=konsole,dolphin
 FONTS=font-dejavu,font-droid-nonlatin,font-freefont
 GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles
 GLIBC_COMPATIBILITY=gcompat
-ROOTFS_SOURCE=official Alpine v3.24 main and community repositories
-ROOTFS_FORMAT=tar.xz
+ROOTFS_SOURCE=official Alpine v3.22 main and community repositories
+ROOTFS_FORMAT=tar.xz (also validated for the doroUbuntu X11 runtime)
 EOF
 
 echo "Built Alpine ARM64 + KDE Plasma rootfs directory:"
 du -sh "$ROOTFS"
 grep -E '^P:(plasma-desktop|plasma-workspace|kwin)$' "$ROOTFS/lib/apk/db/installed"
 test -x "$ROOTFS/usr/bin/startplasma-wayland"
+test -x "$ROOTFS/usr/bin/startplasma-x11"
+test -x "$ROOTFS/usr/bin/kwin_x11"
 test -x "$ROOTFS/usr/bin/kwin_wayland"
 test -x "$ROOTFS/usr/bin/dbus-run-session"
 test -x "$ROOTFS/usr/bin/Xwayland"
