@@ -53,7 +53,8 @@ public final class ProotSession {
             command.add("/root");
             command.add("/bin/sh");
             command.add("-c");
-            command.add("echo 'ALPINE_ROOTFS_OK'; cat /etc/alpine-release; uname -m; " +
+            command.add("echo 'ALPINE_ROOTFS_OK'; cat /etc/alpine-release && " +
+                    "test \"$(uname -m)\" = aarch64 && " +
                     "test -x /usr/bin/startplasma-wayland && echo 'KDE_PLASMA_WAYLAND_OK'");
 
             ProcessBuilder builder = new ProcessBuilder(command);
