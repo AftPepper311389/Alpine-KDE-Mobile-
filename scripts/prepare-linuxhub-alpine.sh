@@ -55,6 +55,8 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch
 # Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Alpine archive.
 def patch_manager(s):
     s = s.replace('"Ubuntu 已完成初始化"', '"Alpine 已完成初始化"')
+    s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "alpine")')
+    s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.21")')
     s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
     s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
     s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
