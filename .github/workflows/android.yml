@@ -53,7 +53,164 @@ jobs:
           sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
           grep -q '^KDE_DESKTOP=installed$' .work/alpine-assets/rootfs-build-info.txt
           grep -q '^P:plasma-desktop$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:plasma-workspace$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:plasma-workspace
+          grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:dbus-x11$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-dri-gallium$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-egl$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gbm$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gl$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gles$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:font-dejavu$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:font-droid-nonlatin$' .work/alpine-assets/alpine-kde-package-check.txt
+          tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/Xwayland' "$RUNNER_TEMP/rootfs-files.txt"
+          test -s .work/alpine-assets/ALPINE-LICENSES.txt
+
+      - name: Upload generated Alpine rootfs payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  build-apk:
+    name: Build single APK on doroUbuntu runtime
+    needs: build-alpine-rootfs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download generated Alpine rootfs payload
+        uses: actions/download-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets
+
+      - name: Verify Alpine gzip rootfs checksum
+        run: |
+          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
+          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.gz.sha256
+
+      - name: Install Android build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config python3 git curl zip unzip
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865"
+
+      - name: Build Alpine KDE APK using doroUbuntu PRoot and Lorie X11
+        run: bash scripts/build-doro-apk.sh
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/Alpine-KDE-Mobile.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+ .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:plasma-workspace-x11
+          grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:dbus-x11$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-dri-gallium$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-egl$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gbm$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gl$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-gles$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:font-dejavu$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:font-droid-nonlatin$' .work/alpine-assets/alpine-kde-package-check.txt
+          tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/Xwayland' "$RUNNER_TEMP/rootfs-files.txt"
+          test -s .work/alpine-assets/ALPINE-LICENSES.txt
+
+      - name: Upload generated Alpine rootfs payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  build-apk:
+    name: Build single APK on doroUbuntu runtime
+    needs: build-alpine-rootfs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download generated Alpine rootfs payload
+        uses: actions/download-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets
+
+      - name: Verify Alpine gzip rootfs checksum
+        run: |
+          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
+          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.gz.sha256
+
+      - name: Install Android build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config python3 git curl zip unzip
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865"
+
+      - name: Build Alpine KDE APK using doroUbuntu PRoot and Lorie X11
+        run: bash scripts/build-doro-apk.sh
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/Alpine-KDE-Mobile.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+ .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:dbus-x11$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
