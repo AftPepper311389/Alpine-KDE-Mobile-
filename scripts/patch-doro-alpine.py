@@ -54,8 +54,8 @@ m = replace_method(m, "    fun initialize(", "    private fun ensureStartupMaint
                     paths.rootfsDir.deleteRecursively()
                     verifyAsset(ROOTFS_ASSET, ROOTFS_SHA256)
                     context.assets.open(ROOTFS_ASSET).use { TarGzExtractor.extract(it, paths.rootfsDir) }
-                    check(File(paths.rootfsDir, "etc/alpine-release").readText().startsWith("3.22")) {
-                        "内置 RootFS 不是 Alpine 3.22"
+                    check(File(paths.rootfsDir, "etc/alpine-release").readText().startsWith("3.21")) {
+                        "内置 RootFS 不是 Alpine 3.21"
                     }
                     check(File(paths.rootfsDir, "usr/bin/startplasma-x11").canExecute()) {
                         "Alpine KDE X11 会话组件缺失"
@@ -63,7 +63,7 @@ m = replace_method(m, "    fun initialize(", "    private fun ensureStartupMaint
                     check(File(paths.rootfsDir, "usr/bin/kwin_x11").canExecute()) {
                         "KWin X11 组件缺失"
                     }
-                    paths.rootfsReadyMarker.writeText("alpine-3.22-kde-x11\n")
+                    paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\n")
                 }
             }
             execute(InitializationStep.CREATE_CONTAINER, "正在配置 Alpine 容器") {
@@ -87,7 +87,7 @@ m = replace_method(m, "    fun initialize(", "    private fun ensureStartupMaint
                 runAsRoot(environmentScript(username), "initialize-environment")
             }
             execute(InitializationStep.SAVE_CONFIGURATION, "正在保存配置") { }
-            return ContainerConfig(distribution = "alpine", version = "3.22", username = username).also {
+            return ContainerConfig(distribution = "alpine", version = "3.21", username = username).also {
                 saveConfig(it)
                 paths.initializationStateFile.delete()
                 appendLog("ALPINE KDE INITIALIZATION COMPLETE")
@@ -163,19 +163,19 @@ m = replace_method(m, "    private fun environmentScript(", "    fun loadInitial
             "chown -R " + shell(username) + ":" + shell(username) + " /home/" + shell(username)''', mp)
 
 m = m.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "alpine")')
-m = m.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.22")')
+m = m.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.21")')
 m = m.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"', 'private const val ROOTFS_ASSET = "rootfs/alpine-kde-aarch64.tar.gz"')
 m = re.sub(r'private const val ROOTFS_SHA256 = "[^"]+"',
            'private const val ROOTFS_SHA256 = "' + args.rootfs_sha256 + '"', m)
 write(mp, m)
 
 pfile = "app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt"
-p = read(pfile).replace('distributions/ubuntu-24.04/rootfs', 'distributions/alpine-3.22/rootfs')
+p = read(pfile).replace('distributions/ubuntu-24.04/rootfs', 'distributions/alpine-3.21/rootfs')
 write(pfile, p)
 
 xfile = "app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt"
 x = read(xfile).replace('linux/distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb',
-                        'linux/distributions/alpine-3.22/rootfs/usr/share/X11/xkb')
+                        'linux/distributions/alpine-3.21/rootfs/usr/share/X11/xkb')
 write(xfile, x)
 
 dfile = "app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt"
@@ -196,8 +196,8 @@ write(dfile, d)
 models_file = "app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt"
 models = read(models_file)
 models = models.replace('distribution: String = "ubuntu"', 'distribution: String = "alpine"')
-models = models.replace('version: String = "24.04"', 'version: String = "3.22"')
-models = models.replace('UBUNTU("Ubuntu 24.04", "基础组件"', 'UBUNTU("Alpine Linux 3.22", "基础组件"')
+models = models.replace('version: String = "24.04"', 'version: String = "3.21"')
+models = models.replace('UBUNTU("Ubuntu 24.04", "基础组件"', 'UBUNTU("Alpine Linux 3.21", "基础组件"')
 models = models.replace('DESKTOP("XFCE 图形桌面", "桌面环境"', 'DESKTOP("KDE Plasma 图形桌面", "桌面环境"')
 models = models.replace('XFCE("XFCE 桌面", "内置组件"', 'XFCE("KDE Plasma 桌面", "内置组件"')
 models = models.replace('APT("APT", "基础组件"', 'APT("APK", "基础组件"')
@@ -221,4 +221,4 @@ gradle = gradle.replace('versionName = "1.1.9Debug"', 'versionName = "1.0.0-alpi
 gradle = gradle.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")')
 write(gradle_file, gradle)
 
-print("Patched doroUbuntu Android runtime for Alpine 3.22 + KDE Plasma X11.")
+print("Patched doroUbuntu Android runtime for Alpine 3.21 + KDE Plasma X11.")
