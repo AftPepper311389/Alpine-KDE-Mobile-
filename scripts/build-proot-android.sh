@@ -2,7 +2,7 @@
 set -euo pipefail
 
 WORK="${RUNNER_TEMP:-/tmp}/proot-static-src"
-ARTIFACT_DIR="$GITHUB_WORKSPACE/app/src/main/assets/proot"
+ARTIFACT_DIR="$GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a"
 OUT_DIR="${RUNNER_TEMP:-/tmp}/proot-static-build"
 SOURCE_COMMIT="6f8ebfd8e24887dfba64c3f2d7d5fe9dc059b60e"
 
@@ -29,6 +29,11 @@ EOF
 
 test -x "$ARTIFACT_DIR/proot"
 test -s "$ARTIFACT_DIR/loader"
-file "$ARTIFACT_DIR/proot"
-readelf -h "$ARTIFACT_DIR/proot" | grep -E 'Class:|Machine:'
-sha256sum "$ARTIFACT_DIR"/* > "$ARTIFACT_DIR/SHA256SUMS"
+mv "$ARTIFACT_DIR/proot" "$ARTIFACT_DIR/libproot.so"
+mv "$ARTIFACT_DIR/loader" "$ARTIFACT_DIR/libproot-loader.so"
+if [[ -s "$ARTIFACT_DIR/loader32" ]]; then
+  mv "$ARTIFACT_DIR/loader32" "$ARTIFACT_DIR/libproot-loader32.so"
+fi
+file "$ARTIFACT_DIR/libproot.so"
+readelf -h "$ARTIFACT_DIR/libproot.so" | grep -E 'Class:|Machine:'
+sha256sum "$ARTIFACT_DIR"/*.so > "$ARTIFACT_DIR/SHA256SUMS"
