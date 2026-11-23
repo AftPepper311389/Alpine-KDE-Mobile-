@@ -3,11 +3,11 @@ package org.alpinekde.mobile;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Typeface;
-import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity {
     private int dp(float value) {
@@ -23,11 +23,21 @@ public final class MainActivity extends Activity {
         return view;
     }
 
-    private boolean hasEmbeddedAlpineRootfs() {
+    private boolean hasEmbeddedRootfs() {
         try (InputStream input = getAssets().open("alpine-rootfs-aarch64.tar.gz")) {
             return input.read() == 0x1f && input.read() == 0x8b;
         } catch (Exception ignored) {
             return false;
+        }
+    }
+
+    private String readBuildInfo() {
+        try (InputStream input = getAssets().open("rootfs-build-info.txt")) {
+            byte[] data = new byte[input.available()];
+            int count = input.read(data);
+            return new String(data, 0, Math.max(0, count), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            return "";
         }
     }
 
@@ -40,7 +50,9 @@ public final class MainActivity extends Activity {
                 android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
                 android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
 
-        boolean rootfsPresent = hasEmbeddedAlpineRootfs();
+        boolean rootfsPresent = hasEmbeddedRootfs();
+        String buildInfo = readBuildInfo();
+        boolean kdePresent = buildInfo.contains("KDE_DESKTOP=installed");
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -54,7 +66,7 @@ public final class MainActivity extends Activity {
         subParams.topMargin = dp(8);
         content.addView(subtitle, subParams);
 
-        TextView status = text(rootfsPresent ? "ALPINE ROOTFS EMBEDDED" : "ROOTFS ASSET MISSING", 12, true);
+        TextView status = text(rootfsPresent ? (kdePresent ? "ALPINE + KDE PAYLOAD EMBEDDED" : "ALPINE ROOTFS EMBEDDED") : "ROOTFS ASSET MISSING", 12, true);
         status.setTextColor(rootfsPresent ? 0xFF176B45 : 0xFFB3261E);
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-2, -2);
         statusParams.topMargin = dp(32);
@@ -62,12 +74,14 @@ public final class MainActivity extends Activity {
 
         addSection(content, "Embedded Linux payload",
                 "Alpine Linux 3.24.4 · ARM64 (aarch64)\nBootstrap userspace: " +
-                (rootfsPresent ? "present in this APK" : "not found in this APK") +
-                "\nPackage manager: apk · Base utilities: BusyBox");
-        addSection(content, "Desktop integration status",
-                "KDE Plasma desktop packages: not yet embedded\nRootfs extraction: not implemented\nPRoot/process runtime: not integrated\nAndroid-hosted display and input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
+                (rootfsPresent ? "present in this APK" : "not found") +
+                "\nKDE Plasma desktop/workspace: " + (kdePresent ? "included in rootfs" : "not verified") +
+                "\nKWin Wayland compositor: " + (kdePresent ? "included in rootfs" : "not verified") +
+                "\nKonsole + Dolphin: " + (kdePresent ? "included in rootfs" : "not verified"));
+        addSection(content, "Runtime and graphics status",
+                "Rootfs extraction: not implemented\nLinux process runtime: not integrated\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
         addSection(content, "Important",
-                "This build now carries a real Alpine ARM64 bootstrap filesystem inside the APK. It is not yet a complete KDE desktop and cannot launch a Plasma session. The next stages add local extraction, the Linux process runtime, KDE packages, and an in-app display bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
+                "An embedded KDE userspace is not yet a running desktop. The next work is local extraction, a no-root Linux process runtime, and an in-app display/input bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
