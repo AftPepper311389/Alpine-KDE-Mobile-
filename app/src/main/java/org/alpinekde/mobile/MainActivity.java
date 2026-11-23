@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends Activity {
     private final ExecutorService installerExecutor = Executors.newSingleThreadExecutor();
     private TextView installStatus;
-    private Button installButton;
+    private Button installButton;\n    private Button testButton;
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
@@ -102,6 +102,14 @@ public final class MainActivity extends Activity {
         content.addView(installStatus, messageParams);
         installButton.setOnClickListener(view -> startInstall());
 
+        testButton = new Button(this);
+        testButton.setText("Test Alpine Linux runtime");
+        testButton.setEnabled(installed && new java.io.File(getApplicationInfo().nativeLibraryDir, "libproot.so").isFile());
+        LinearLayout.LayoutParams testParams = new LinearLayout.LayoutParams(-1, -2);
+        testParams.topMargin = dp(8);
+        content.addView(testButton, testParams);
+        testButton.setOnClickListener(view -> runRuntimeTest());
+
         addSection(content, "Runtime and graphics status",
                 "Linux process runtime / PRoot: not integrated\nKDE session launch: not implemented\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
         addSection(content, "Important",
@@ -110,6 +118,15 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void runRuntimeTest() {
+        testButton.setEnabled(false);
+        installStatus.setText("Starting PRoot and checking Alpine…");
+        installerExecutor.execute(() -> ProotSession.runSmokeTest(this, result -> runOnUiThread(() -> {
+            installStatus.setText(result);
+            testButton.setEnabled(true);
+        })));
     }
 
     private void startInstall() {
@@ -121,6 +138,7 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     installStatus.setText("Alpine + KDE rootfs installed successfully in app-private storage.");
                     installButton.setText("Alpine + KDE installed");
+                    testButton.setEnabled(new java.io.File(getApplicationInfo().nativeLibraryDir, "libproot.so").isFile());
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
