@@ -72,7 +72,7 @@ patch(desktop_path,
         setupCollectionJob = viewModelScope.launch {
             try {
                 _setupState.value = SetupState.Extracting(
-                    progress = -1f,
+                    progress = 0f,
                     message = "Preparing the embedded Alpine + KDE filesystem…",
                 )
                 val archive = withContext(Dispatchers.IO) {
