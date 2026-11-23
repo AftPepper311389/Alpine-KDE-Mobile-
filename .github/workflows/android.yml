@@ -12,11 +12,33 @@ permissions:
 
 jobs:
   build-debug-apk:
-    name: Build debug APK (arm64-v8a)
+    name: Build embedded Alpine ARM64 APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Set up QEMU for ARM64 rootfs build
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Alpine ARM64 root filesystem
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            alpine:3.24.4 sh scripts/build-alpine-rootfs.sh
+
+      - name: Verify embedded rootfs archive
+        run: |
+          test -s app/src/main/assets/alpine-rootfs-aarch64.tar.gz
+          sha256sum -c app/src/main/assets/alpine-rootfs-aarch64.tar.gz.sha256
+          tar -tzf app/src/main/assets/alpine-rootfs-aarch64.tar.gz | grep -q './sbin/apk'
+          tar -tzf app/src/main/assets/alpine-rootfs-aarch64.tar.gz | grep -q './bin/busybox'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -42,6 +64,13 @@ jobs:
 
       - name: Build APK
         run: gradle --no-daemon assembleDebug
+
+      - name: Verify APK contains embedded Alpine rootfs
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          unzip -l "$APK" | grep 'assets/alpine-rootfs-aarch64.tar.gz'
+          unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.gz | sha256sum
+          ls -lh "$APK"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
