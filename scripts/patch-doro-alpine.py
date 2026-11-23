@@ -139,7 +139,9 @@ m = replace_method(m, "    fun startDesktop(", "    private fun runAsRoot(", r''
 m = replace_method(m, "    private fun writeContainerFiles()", "    private fun userCreationScript(", r'''    private fun writeContainerFiles() {
         File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\n")
         File(paths.rootfsDir, "etc/hosts").writeText("127.0.0.1 localhost\n127.0.1.1 alpine-kde\n")
-        File(paths.rootfsDir, "etc/resolv.conf").writeText(
+        val resolv = File(paths.rootfsDir, "etc/resolv.conf")
+        resolv.delete()
+        resolv.writeText(
             "nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:3\n"
         )
     }''', mp)
