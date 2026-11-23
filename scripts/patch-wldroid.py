@@ -86,7 +86,7 @@ patch(desktop_path,
                 }
                 _setupState.value = SetupState.Extracting(
                     progress = 0.05f,
-                    message = "Installing Alpine Linux 3.24.4 + KDE Plasma offline…",
+                    message = "Installing Alpine Linux 3.24 + KDE Plasma offline…",
                 )
                 environmentRegistry.importRootfs(
                     tarballPath = archive.absolutePath,
