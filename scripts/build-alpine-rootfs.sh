@@ -30,7 +30,7 @@ mkdir -p "$ROOTFS/etc/apk"
 cp "$REPOSITORIES" "$ROOTFS/etc/apk/repositories"
 printf '%s\n' "Alpine KDE Mobile ARM64 rootfs" > "$ROOTFS/etc/alpine-kde-mobile"
 
-grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|font-dejavu|font-droid-nonlatin|xwayland)$' \
+grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|dbus-x11|font-dejavu|font-droid-nonlatin|xwayland)$' \
     "$ROOTFS/lib/apk/db/installed" > "$ASSETS/alpine-kde-package-check.txt"
 
 # Preserve a machine-readable package/license inventory for redistribution notices.
