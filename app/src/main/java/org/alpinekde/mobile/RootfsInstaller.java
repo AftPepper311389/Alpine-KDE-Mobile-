@@ -10,12 +10,10 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
 import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,7 +132,6 @@ public final class RootfsInstaller {
                             remaining -= read;
                             copied += read;
                         }
-                        file.getFD().sync();
                     }
                     Os.chmod(output.getAbsolutePath(), entry.getMode() & 0777);
                     if (totalBytes > 0) {
@@ -155,9 +152,8 @@ public final class RootfsInstaller {
         }
 
         for (int i = directories.size() - 1; i >= 0; i--) {
-            File directory = directories.get(i);
-            // Preserve normal directory access even when the archive marks a directory read-only.
-            Os.chmod(directory.getAbsolutePath(), 0755);
+            DirectoryEntry directory = directories.get(i);
+            Os.chmod(directory.file.getAbsolutePath(), directory.mode);
         }
         listener.onProgress("Finalizing local Alpine + KDE installation…");
     }
