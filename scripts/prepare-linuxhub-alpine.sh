@@ -198,7 +198,7 @@ def patch_desktop(s):
         "export DISPLAY=${quote(display)}; " +
             "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
             "mkdir -p \"\\$XDG_RUNTIME_DIR\"; chmod 700 \"\\$XDG_RUNTIME_DIR\"; " +
-            "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb; " +
+            "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb KWIN_COMPOSE=N QT_X11_NO_MITSHM=1; " +
             "export LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=zh_CN:zh; " +
             "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
             "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
