@@ -30,7 +30,8 @@ jobs:
           sudo chown "$(id -u):$(id -g)" .work/alpine-assets
           sudo tar --numeric-owner --format=gnu -czf "$GITHUB_WORKSPACE/.work/alpine-assets/alpine-rootfs-aarch64.tar.gz" -C "$GITHUB_WORKSPACE/.work/alpine-rootfs" .
           sha256sum .work/alpine-assets/alpine-rootfs-aarch64.tar.gz > .work/alpine-assets/alpine-rootfs-aarch64.tar.gz.sha256
-          du -sh .work/alpine-rootfs .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
+          sudo du -sh .work/alpine-rootfs
+          du -sh .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
 
       - name: Verify Alpine KDE X11 rootfs
         run: |
