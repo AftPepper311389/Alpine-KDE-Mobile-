@@ -21,7 +21,7 @@ apk --root "$ROOTFS" \
     --repositories-file "$REPOSITORIES" \
     add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus dbus-x11 sudo gcompat \
         plasma-desktop plasma-workspace plasma-workspace-x11 kwin konsole dolphin xwayland \
-        mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
+        mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles mesa-vulkan-freedreno libdrm \
         libxkbcommon xkeyboard-config
 
 # Drop package download caches; keep the apk database and repository configuration.
@@ -30,7 +30,7 @@ mkdir -p "$ROOTFS/etc/apk"
 cp "$REPOSITORIES" "$ROOTFS/etc/apk/repositories"
 printf '%s\n' "Alpine KDE Mobile ARM64 rootfs" > "$ROOTFS/etc/alpine-kde-mobile"
 
-grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|plasma-workspace-x11|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|dbus-x11|font-dejavu|font-droid-nonlatin|xwayland)$' \
+grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|plasma-workspace-x11|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|mesa-vulkan-freedreno|dbus-x11|font-dejavu|font-droid-nonlatin|xwayland)$' \
     "$ROOTFS/lib/apk/db/installed" > "$ASSETS/alpine-kde-package-check.txt"
 
 # Preserve a machine-readable package/license inventory for redistribution notices.
@@ -48,7 +48,7 @@ KDE_DESKTOP=installed
 KDE_COMPONENTS=plasma-desktop,plasma-workspace,plasma-workspace-x11,kwin
 APPLICATIONS=konsole,dolphin
 FONTS=font-dejavu,font-droid-nonlatin,font-freefont
-GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles
+GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles,mesa-vulkan-freedreno
 GLIBC_COMPATIBILITY=gcompat
 ROOTFS_SOURCE=official Alpine v3.21 main and community repositories
 ROOTFS_FORMAT=tar.gz (doroUbuntu X11 runtime)
