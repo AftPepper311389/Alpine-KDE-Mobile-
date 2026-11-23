@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SRC="${1:?usage: prepare-linuxhub-alpine.sh SOURCE_DIR ROOTFS_TAR}"
+ROOTFS_TAR="${2:?missing rootfs archive}"
+ASSETS="$SRC/app/src/main/assets"
+mkdir -p "$ASSETS/rootfs"
+install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz"
+sha256sum "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
+
+python3 - "$SRC" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256" <<'PY'
+from pathlib import Path
+import re, sys
+
+src = Path(sys.argv[1])
+sha = Path(sys.argv[2]).read_text().strip()
+
+def edit(rel, fn):
+    p = src / rel
+    s = p.read_text()
+    out = fn(s)
+    if out == s:
+        raise SystemExit(f"Patch made no change: {rel}")
+    p.write_text(out)
+
+def once(s, old, new, label):
+    if old not in s:
+        raise SystemExit(f"Could not locate patch point: {label}")
+    return s.replace(old, new, 1)
+
+# RootFS location and distribution metadata.
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
+     lambda s: s.replace('distributions/ubuntu-24.04/rootfs', 'distributions/alpine-3.21/rootfs'))
+
+def patch_models(s):
+    s = s.replace('distribution: String = "ubuntu"', 'distribution: String = "alpine"')
+    s = s.replace('version: String = "24.04"', 'version: String = "3.21"')
+    s = s.replace('ContainerConfig(\n                distribution = values.getProperty("distribution", "ubuntu"),\n                version = values.getProperty("version", "24.04"),',
+                  'ContainerConfig(\n                distribution = values.getProperty("distribution", "alpine"),\n                version = values.getProperty("version", "3.21"),')
+    s = s.replace('UBUNTU("Ubuntu 24.04", "基础组件", required = true, defaultSelected = true)',
+                  'UBUNTU("Alpine Linux 3.21 ARM64", "基础组件", required = true, defaultSelected = true)')
+    s = s.replace('APT("APT", "基础组件", required = true, defaultSelected = true)',
+                  'APT("APK", "基础组件", required = true, defaultSelected = true)')
+    s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
+                  'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
+    s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
+                  'XFCE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace-x11", "kwin"))')
+    s = s.replace('X11("X11", "内置组件", packages = listOf("dbus-x11", "x11-xserver-utils", "xterm"))',
+                  'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus-x11"))')
+    s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
+                  'FILE_MANAGER("Dolphin 文件管理器", "内置组件", packages = listOf("dolphin", "konsole", "kate"))')
+    return s
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch_models)
+
+# Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Alpine archive.
+def patch_manager(s):
+    s = s.replace('"Ubuntu 已完成初始化"', '"Alpine 已完成初始化"')
+    s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
+    s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
+    s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
+                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar.gz"')
+    s = s.replace('private const val ROOTFS_SHA256 = "0ce61ffe898bab0d0b35231c3daf1751d95c34a1963b507549c9d7dc97543e48"',
+                  f'private const val ROOTFS_SHA256 = "{sha}"')
+    s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
+                  'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\n")')
+    s = s.replace('File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders").deleteRecursively()\n                    File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders.0").deleteRecursively()\n', '')
+    s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Alpine 已完成初始化" }')
+
+    # Do not install Ubuntu-only Debian packages during first boot.
+    start = s.index('            execute(InitializationStep.CREATE_CONTAINER,')
+    end = s.index('            execute(InitializationStep.CREATE_USER,', start)
+    s = s[:start] + '''            execute(InitializationStep.CREATE_CONTAINER, "正在配置 Alpine KDE 桌面") {
+                writeContainerFiles()
+                runAsRoot("apk update && apk add --no-cache sudo shadow bash dbus dbus-x11 pulseaudio fcitx5 fcitx5-gtk fcitx5-qt fcitx5-chinese-addons", "alpine-base-packages")
+            }
+''' + s[end:]
+
+    s = re.sub(r'execute\(InitializationStep.CONFIGURE_SUDO,.*?\n            \}', '''execute(InitializationStep.CONFIGURE_SUDO, "正在配置 sudo") {
+                runAsRoot("addgroup -S wheel 2>/dev/null || true; adduser ${shell(username)} wheel; mkdir -p /etc/sudoers.d; printf '%s ALL=(ALL:ALL) ALL\\\\n' ${shell(username)} > /etc/sudoers.d/${shell(username)}; chmod 440 /etc/sudoers.d/${shell(username)}", "configure-sudo")
+            }''', s, count=1, flags=re.S)
+
+    # Alpine's package index replaces Ubuntu apt configuration.
+    a = s.index('    private fun ensureNetworkConfig()')
+    b = s.index('    private fun ensureTunaAptMirror()', a)
+    s = s[:a] + '''    private fun ensureNetworkConfig() {
+        File(paths.rootfsDir, "etc/resolv.conf").writeText(
+            "nameserver 1.1.1.1\\n" + "nameserver 8.8.8.8\\n" + "options timeout:2 attempts:3 rotate\\n"
+        )
+        File(paths.rootfsDir, "etc/apk/repositories").apply {
+            parentFile?.mkdirs()
+            writeText("https://dl-cdn.alpinelinux.org/alpine/v3.21/main\\nhttps://dl-cdn.alpinelinux.org/alpine/v3.21/community\\n")
+        }
+        File(paths.rootfsDir, "etc/gai.conf").apply {
+            parentFile?.mkdirs()
+            writeText("precedence ::ffff:0:0/96  100\\n")
+        }
+    }
+
+''' + s[b:]
+
+    # No glibc-only preload bridge in the musl-based Alpine rootfs.
+    s = s.replace('        ensureGetifaddrsBridge()\n', '')
+    s = s.replace('        val stagedClient = File(paths.runtimeDir, "libgetifaddrs_bridge.so")\n        copyAsset(paths.getifaddrsClientAsset, stagedClient)\n        GetifaddrsBridge.installClient(paths.rootfsDir, stagedClient)\n        val profile = File(paths.rootfsDir, "etc/profile.d/doro.sh")\n        profile.parentFile?.mkdirs()\n        val preloadLine = "export LD_PRELOAD=${GetifaddrsBridge.CONTAINER_LIBRARY}"\n        if (!profile.exists()) profile.writeText("$preloadLine\\n")\n        else if (profile.readLines().none { it.trim() == preloadLine }) profile.appendText("$preloadLine\\n")\n        check(paths.getifaddrsServer.isFile && paths.getifaddrsServer.canExecute()) { "getifaddrs服务端不可用" }\n', '')
+
+    # Rootfs already contains the desktop and utilities; don't run XFCE/Ubuntu repair paths.
+    s = s.replace('        installGpuAwareDesktopWrappers()\n', '')
+    s = s.replace('        ensureDesktopWallpaper(config.username)\n', '')
+    s = s.replace('        ensureDesktopShortcuts(config.username)\n', '')
+    s = s.replace('        ensureFirefoxCompatibility(config.username)\n', '')
+
+    # Fastfetch is installed in the image, not as a Debian package on first launch.
+    a = s.index('    private fun ensureStartupMaintenance(')
+    b = s.index('    fun loginCommand(', a)
+    s = s[:a] + '''    private fun ensureStartupMaintenance(username: String) {
+        ensureFetchScript()
+        ensureTerminalProfile(username)
+    }
+
+''' + s[b:]
+
+    # Hostname and first-boot user creation use Alpine's shadow tools.
+    a = s.index('    private fun writeContainerFiles()')
+    b = s.index('    fun loadInitializationState()', a)
+    s = s[:a] + '''    private fun writeContainerFiles() {
+        ensureNetworkConfig()
+        File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\n")
+        val hosts = File(paths.rootfsDir, "etc/hosts")
+        hosts.writeText("127.0.0.1 localhost\\n127.0.1.1 alpine-kde\\n::1 localhost ip6-localhost\\n")
+    }
+
+    private fun userCreationScript(username: String, password: CharArray): String {
+        val credentials = "$username:${password.concatToString()}"
+        return "id -u ${shell(username)} >/dev/null 2>&1 || adduser -D -h /home/${shell(username)} -s /bin/bash ${shell(username)}; " +
+            "mkdir -p /home/${shell(username)}; printf '%s\\n' ${shell(credentials)} | chpasswd"
+    }
+
+    private fun environmentScript(username: String): String =
+        "mkdir -p /etc/profile.d /home/${shell(username)} && " +
+            "printf '%s\\n' 'export LANG=zh_CN.UTF-8' 'export LC_ALL=zh_CN.UTF-8' 'export LANGUAGE=zh_CN:zh' 'export MALLOC_ARENA_MAX=2' 'export MESA_SHADER_CACHE_MAX_SIZE=128M' > /etc/profile.d/mobile.sh && " +
+            "ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && " +
+            "printf '%s\\n' 'Asia/Shanghai' > /etc/timezone && " +
+            "touch /home/${shell(username)}/.bashrc && " +
+            "grep -qF 'export PS1=' /home/${shell(username)}/.bashrc || " +
+            "printf '%s\\n' 'export PS1="\\\\[\\\\033[01;32m\\\\]\\\\u@\\\\h\\\\[\\\\033[00m\\\\]:\\\\[\\\\033[01;34m\\\\]\\\\w\\\\[\\\\033[00m\\\\]\\\\$ "' >> /home/${shell(username)}/.bashrc; " +
+            "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
+
+''' + s[b:]
+    return s
+
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
+
+# Switch the existing Lorie X11 session launcher from XFCE to KDE Plasma X11.
+def patch_desktop(s):
+    a = s.index('    fun sessionScript(')
+    b = s.index('    fun patchDesktop(', a)
+    replacement = '''    fun sessionScript(display: String, username: String): String =
+        "export DISPLAY=${quote(display)}; " +
+            "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
+            "mkdir -p \"\\$XDG_RUNTIME_DIR\"; chmod 700 \"\\$XDG_RUNTIME_DIR\"; " +
+            "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb; " +
+            "export LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh; " +
+            "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
+            "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
+            "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
+            "pkill -9 -x plasmashell 2>/dev/null || true; pkill -9 -x kwin_x11 2>/dev/null || true; sleep 1; " +
+            "exec dbus-run-session -- /usr/bin/startplasma-x11"
+
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
+
+# Update visible distro branding while preserving the upstream application structure.
+for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
+            "app/src/main/res/values/strings.xml"]:
+    p = src / rel
+    if p.exists():
+        t = p.read_text().replace("Ubuntu", "Alpine").replace("ubuntu", "alpine").replace("XFCE", "KDE Plasma")
+        p.write_text(t)
+
+# The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
+p = src / "app/build.gradle.kts"
+g = p.read_text()
+g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")')
+p.write_text(g)
+PY
+
+# Keep the complete upstream 1.2.0 source tree as the actual Android application base.
