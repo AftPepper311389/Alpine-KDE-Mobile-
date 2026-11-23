@@ -42,7 +42,158 @@ jobs:
           grep -q '^P:plasma-workspace$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:plasma-workspace-x11$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:dbus-x11$' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:dbus-x11
+          grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
+          tar -tzf .work/alpine-assets/alpine-rootfs-aarch64.tar.gz > "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-launch' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/share/X11/xkb' "$RUNNER_TEMP/rootfs-files.txt"
+          test -s .work/alpine-assets/ALPINE-LICENSES.txt
+
+      - name: Upload Alpine rootfs payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  build-apk:
+    name: Build single APK on doroUbuntu runtime
+    needs: build-alpine-rootfs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download Alpine rootfs payload
+        uses: actions/download-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets
+
+      - name: Verify Alpine rootfs checksum
+        run: |
+          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
+          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.gz.sha256
+
+      - name: Verify preinstalled Android build dependencies
+        run: |
+          command -v cmake
+          command -v ninja
+          command -v pkg-config
+          command -v python3
+          command -v git
+          command -v curl
+          command -v zip
+          command -v unzip
+          command -v g++
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Build Alpine KDE APK using doroUbuntu PRoot and Lorie X11
+        run: bash scripts/build-doro-apk.sh
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/Alpine-KDE-Mobile.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+ .work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:mesa-vulkan-freedreno
+          grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
+          tar -tzf .work/alpine-assets/alpine-rootfs-aarch64.tar.gz > "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_x11' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-launch' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/share/X11/xkb' "$RUNNER_TEMP/rootfs-files.txt"
+          test -s .work/alpine-assets/ALPINE-LICENSES.txt
+
+      - name: Upload Alpine rootfs payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  build-apk:
+    name: Build single APK on doroUbuntu runtime
+    needs: build-alpine-rootfs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download Alpine rootfs payload
+        uses: actions/download-artifact@v4
+        with:
+          name: alpine-rootfs-payload
+          path: .work/alpine-assets
+
+      - name: Verify Alpine rootfs checksum
+        run: |
+          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.gz
+          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.gz.sha256
+
+      - name: Verify preinstalled Android build dependencies
+        run: |
+          command -v cmake
+          command -v ninja
+          command -v pkg-config
+          command -v python3
+          command -v git
+          command -v curl
+          command -v zip
+          command -v unzip
+          command -v g++
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - name: Build Alpine KDE APK using doroUbuntu PRoot and Lorie X11
+        run: bash scripts/build-doro-apk.sh
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/Alpine-KDE-Mobile.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+ .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
           tar -tzf .work/alpine-assets/alpine-rootfs-aarch64.tar.gz > "$RUNNER_TEMP/rootfs-files.txt"
           grep -q './usr/bin/startplasma-x11' "$RUNNER_TEMP/rootfs-files.txt"
