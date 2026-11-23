@@ -28,6 +28,8 @@ apk --root "$ROOTFS" \
         mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
         libxkbcommon xkeyboard-config
 
+# Drop package download caches; keep the apk database and repository configuration.
+rm -rf "$ROOTFS/var/cache/apk" "$ROOTFS/tmp/"* "$ROOTFS/var/tmp/"*
 mkdir -p "$ROOTFS/etc/apk"
 cp "$REPOSITORIES" "$ROOTFS/etc/apk/repositories"
 printf '%s\n' "Alpine KDE Mobile ARM64 rootfs" > "$ROOTFS/etc/alpine-kde-mobile"
