@@ -4,3 +4,7 @@ local.properties
 *.iml
 .idea/
 .DS_Store
+
+# Generated rootfs payload and temporary third-party source checkout
+.work/
+app/build/
