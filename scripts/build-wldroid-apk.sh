@@ -49,12 +49,25 @@ cd "$WORK"
 
 LICENSE_DIR="$WORK/testapp/src/main/assets/licenses"
 mkdir -p "$LICENSE_DIR"
-cp "$WORK/external/proot/COPYING" "$LICENSE_DIR/PRoot-COPYING.txt"
-cp "$WORK/external/wlroots/LICENSE" "$LICENSE_DIR/wlroots-LICENSE.txt"
-cp "$WORK/external/virglrenderer/COPYING" "$LICENSE_DIR/virglrenderer-COPYING.txt"
-cp "$WORK/external/talloc/COPYING" "$LICENSE_DIR/talloc-COPYING.txt"
-cp "$WORK/virgl/native/build/libepoxy-src/COPYING" "$LICENSE_DIR/libepoxy-COPYING.txt"
-cp "$WORK/compositor/native/subprojects/wayland-1.24.0/COPYING" "$LICENSE_DIR/wayland-COPYING.txt"
+copy_licenses() {
+  local source_dir="$1"
+  local prefix="$2"
+  local files=()
+  mapfile -d '' files < <(find "$source_dir" -maxdepth 2 -type f \\( -iname 'COPYING*' -o -iname 'LICENSE*' \\) -print0)
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "No license text found under $source_dir" >&2
+    exit 1
+  fi
+  for file in "${files[@]}"; do
+    cp "$file" "$LICENSE_DIR/${prefix}-$(basename "$file")"
+  done
+}
+copy_licenses "$WORK/external/proot" "PRoot"
+copy_licenses "$WORK/external/wlroots" "wlroots"
+copy_licenses "$WORK/external/virglrenderer" "virglrenderer"
+copy_licenses "$WORK/external/talloc" "talloc"
+copy_licenses "$WORK/virgl/native/build/libepoxy-src" "libepoxy"
+copy_licenses "$WORK/compositor/native/subprojects/wayland-1.24.0" "wayland"
 
 ./gradlew --no-daemon --stacktrace -PoverrideVersion=1.0.0 :testapp:assembleDebug
 
