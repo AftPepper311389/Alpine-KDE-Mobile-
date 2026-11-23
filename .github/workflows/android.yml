@@ -46,6 +46,7 @@ jobs:
           grep -Fqx 'P:pulseaudio' .work/alpine-assets/alpine-kde-package-check.txt
           grep -Fqx 'P:pulseaudio-utils' .work/alpine-assets/alpine-kde-package-check.txt
           grep -Fqx 'P:fcitx5' .work/alpine-assets/alpine-kde-package-check.txt
+          grep -Fqx 'P:fcitx5-qt-qt6' .work/alpine-assets/alpine-kde-package-check.txt
           grep -Fqx 'P:gcompat' .work/alpine-assets/alpine-kde-package-check.txt
           grep -Fqx 'P:mesa-vulkan-freedreno' .work/alpine-assets/alpine-kde-package-check.txt
           tar -tzf .work/alpine-assets/alpine-rootfs-aarch64.tar.gz > "$RUNNER_TEMP/rootfs-files.txt"
