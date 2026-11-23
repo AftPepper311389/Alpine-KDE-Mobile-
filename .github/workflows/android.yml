@@ -60,6 +60,9 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
+
       - name: Install Android SDK packages and NDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358"
 
@@ -73,9 +76,6 @@ jobs:
           readelf -h app/src/main/jniLibs/arm64-v8a/libproot.so | grep -q 'AArch64'
           test -s app/src/main/assets/PROOT-COPYING.txt
           test -s app/src/main/jniLibs/arm64-v8a/SHA256SUMS
-
-      - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses || true
 
       - name: Build APK
         run: gradle --no-daemon assembleDebug
