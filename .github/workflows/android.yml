@@ -44,6 +44,9 @@ jobs:
           grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
           tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > "$RUNNER_TEMP/rootfs-files.txt"
           grep -q './usr/bin/startplasma-wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/kwin_wayland' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/Xwayland' "$RUNNER_TEMP/rootfs-files.txt"
           test -s .work/alpine-assets/ALPINE-LICENSES.txt
 
       - name: Install native build dependencies
