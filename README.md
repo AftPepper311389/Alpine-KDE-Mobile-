@@ -21,7 +21,7 @@ The APK is assembled from a pinned WLDroid source revision. WLDroid contributes:
 - A VirGL GLES server and graphics compatibility shims.
 - Android input, display, session, and process-lifecycle integration.
 
-The integration patch changes WLDroid's initial environment from a Debian download to importing the embedded Alpine tar.xz archive, configures the Alpine library paths, and opens directly on the KDE desktop screen. The default desktop command is `dbus-run-session -- startplasma-wayland`, which is intended to start KWin nested under the app-hosted Wayland compositor.
+The integration patch changes WLDroid's initial environment from a Debian download to importing the embedded Alpine tar.xz archive, configures the Alpine library paths, extracts the bundled XKB keyboard maps before the compositor starts, and opens directly on the KDE desktop screen. The default desktop command is `dbus-run-session -- startplasma-wayland`, which is intended to start KWin nested under the app-hosted Wayland compositor.
 
 ## Current verification boundary
 
