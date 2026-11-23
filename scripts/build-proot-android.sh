@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORK="\${RUNNER_TEMP:-/tmp}/proot-static-src"
+WORK="${RUNNER_TEMP:-/tmp}/proot-static-src"
 ARTIFACT_DIR="$GITHUB_WORKSPACE/app/src/main/assets/proot"
-OUT_DIR="\${RUNNER_TEMP:-/tmp}/proot-static-build"
+OUT_DIR="${RUNNER_TEMP:-/tmp}/proot-static-build"
 SOURCE_COMMIT="6f8ebfd8e24887dfba64c3f2d7d5fe9dc059b60e"
 
 rm -rf "$WORK" "$OUT_DIR"
