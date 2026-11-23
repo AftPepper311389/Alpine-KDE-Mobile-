@@ -42,7 +42,8 @@ jobs:
           grep -q '^P:plasma-workspace$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
           grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
-          tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz | grep -q './usr/bin/startplasma-wayland'
+          tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > "$RUNNER_TEMP/rootfs-files.txt"
+          grep -q './usr/bin/startplasma-wayland' "$RUNNER_TEMP/rootfs-files.txt"
           test -s .work/alpine-assets/ALPINE-LICENSES.txt
 
       - name: Install native build dependencies
@@ -88,31 +89,33 @@ jobs:
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -l "$APK" | grep -q 'assets/alpine-rootfs-aarch64.tar.xz'
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libwldroid-compositor.so'
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libproot.so'
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libproot-loader.so'
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libvirgl-test-server.so'
-          unzip -l "$APK" | grep -q 'assets/drm-shim/libdrm-shim.so'
-          unzip -l "$APK" | grep -q 'assets/netstub/libnetstub.so'
-          unzip -l "$APK" | grep -q 'assets/ALPINE-LICENSES.txt'
-          unzip -l "$APK" | grep -q 'assets/alpine-rootfs-aarch64.tar.xz.sha256'
-          unzip -l "$APK" | grep -q 'assets/WLDROID-LICENSE.txt'
-          unzip -l "$APK" | grep -q 'assets/WLDROID-SOURCE-NOTICE.txt'
-          unzip -l "$APK" | grep -q 'assets/THIRD-PARTY-LICENSE-INDEX.txt'
-          unzip -l "$APK" | grep -q 'assets/licenses/PRoot-'
-          unzip -l "$APK" | grep -q 'assets/licenses/wlroots-'
-          unzip -l "$APK" | grep -q 'assets/licenses/virglrenderer-'
-          unzip -l "$APK" | grep -q 'assets/licenses/talloc-'
-          unzip -l "$APK" | grep -q 'assets/licenses/libepoxy-'
-          unzip -l "$APK" | grep -q 'assets/licenses/wayland-'
-          unzip -l "$APK" | grep -q 'assets/gbm-shim/libgbm.so'
-          unzip -l "$APK" | grep -q 'assets/egl-override/libegl_override.so'
-          unzip -l "$APK" | grep -q 'assets/drm-shim/libdrm-wrapper.so'
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/alpine-rootfs-aarch64.tar.xz$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^lib/arm64-v8a/libwldroid-compositor.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^lib/arm64-v8a/libproot.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^lib/arm64-v8a/libproot-loader.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^lib/arm64-v8a/libvirgl-test-server.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/drm-shim/libdrm-shim.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/netstub/libnetstub.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/ALPINE-LICENSES.txt$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/alpine-rootfs-aarch64.tar.xz.sha256$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/WLDROID-LICENSE.txt$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/WLDROID-SOURCE-NOTICE.txt$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/THIRD-PARTY-LICENSE-INDEX.txt$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/PRoot-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/wlroots-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/virglrenderer-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/talloc-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/libepoxy-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/licenses/wayland-' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/gbm-shim/libgbm.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/egl-override/libegl_override.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
           EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
           ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
           test "$EXPECTED_SHA" = "$ACTUAL_SHA"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "package: name='org.alpinekde.mobile'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/apk-badging.txt"
+          grep -q "package: name='org.alpinekde.mobile'" "$RUNNER_TEMP/apk-badging.txt"
           sha256sum "$APK"
           ls -lh "$APK"
 
