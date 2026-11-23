@@ -150,7 +150,7 @@ def patch_manager(s):
 
     private fun environmentScript(username: String): String =
         "mkdir -p /etc/profile.d /home/${shell(username)} && " +
-            "printf '%s\\n' 'export LANG=zh_CN.UTF-8' 'export LC_ALL=zh_CN.UTF-8' 'export LANGUAGE=zh_CN:zh' 'export MALLOC_ARENA_MAX=2' 'export MESA_SHADER_CACHE_MAX_SIZE=128M' > /etc/profile.d/mobile.sh && " +
+            "printf '%s\\n' 'export LANG=C.UTF-8' 'export LC_ALL=C.UTF-8' 'export LANGUAGE=zh_CN:zh' 'export MALLOC_ARENA_MAX=2' 'export MESA_SHADER_CACHE_MAX_SIZE=128M' > /etc/profile.d/mobile.sh && " +
             "ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && " +
             "printf '%s\\n' 'Asia/Shanghai' > /etc/timezone && " +
             "touch /home/${shell(username)}/.bashrc && " +
@@ -172,7 +172,7 @@ def patch_desktop(s):
             "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
             "mkdir -p \"\\$XDG_RUNTIME_DIR\"; chmod 700 \"\\$XDG_RUNTIME_DIR\"; " +
             "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb; " +
-            "export LANG=zh_CN.UTF-8 LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh; " +
+            "export LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=zh_CN:zh; " +
             "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
             "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
             "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
