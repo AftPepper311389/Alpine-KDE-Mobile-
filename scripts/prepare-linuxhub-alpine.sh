@@ -99,8 +99,20 @@ def patch_manager(s):
 ''' + s[b:]
 
     # No glibc-only preload bridge in the musl-based Alpine rootfs.
-    s = s.replace('        ensureGetifaddrsBridge()\n', '')
-    s = s.replace('        val stagedClient = File(paths.runtimeDir, "libgetifaddrs_bridge.so")\n        copyAsset(paths.getifaddrsClientAsset, stagedClient)\n        GetifaddrsBridge.installClient(paths.rootfsDir, stagedClient)\n        val profile = File(paths.rootfsDir, "etc/profile.d/doro.sh")\n        profile.parentFile?.mkdirs()\n        val preloadLine = "export LD_PRELOAD=${GetifaddrsBridge.CONTAINER_LIBRARY}"\n        if (!profile.exists()) profile.writeText("$preloadLine\\n")\n        else if (profile.readLines().none { it.trim() == preloadLine }) profile.appendText("$preloadLine\\n")\n        check(paths.getifaddrsServer.isFile && paths.getifaddrsServer.canExecute()) { "getifaddrs服务端不可用" }\n', '')
+    s = s.replace('        ensureGetifaddrsBridge()\\n', '')
+    a = s.index('    private fun installRuntime()')
+    b = s.index('    private fun ensureGetifaddrsBridge()', a)
+    s = s[:a] + '''    private fun installRuntime() {
+        paths.prootTmpDir.mkdirs()
+        check(paths.prootTmpDir.isDirectory && paths.prootTmpDir.canWrite()) { "PRoot临时目录不可写" }
+        check(paths.proot.isFile && paths.proot.canExecute()) { "PRoot 原生运行时不可用" }
+        check(paths.loader.isFile) { "PRoot Loader 不可用" }
+        paths.libraryDir.mkdirs()
+        copyAsset("runtime/arm64-v8a/lib/libtalloc.so.2", File(paths.libraryDir, "libtalloc.so.2"))
+        copyAsset("runtime/arm64-v8a/lib/libandroid-shmem.so", File(paths.libraryDir, "libandroid-shmem.so"))
+    }
+
+''' + s[b:]
 
     # Rootfs already contains the desktop and utilities; don't run XFCE/Ubuntu repair paths.
     s = s.replace('        installGpuAwareDesktopWrappers()\n', '')
