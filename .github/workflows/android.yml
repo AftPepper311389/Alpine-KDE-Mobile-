@@ -18,12 +18,12 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Build Alpine 3.22 KDE Plasma root filesystem
+      - name: Build Alpine 3.21 KDE Plasma root filesystem
         run: |
           docker run --rm --platform linux/arm64 \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
-            alpine:3.22 sh scripts/build-alpine-rootfs.sh
+            alpine:3.21 sh scripts/build-alpine-rootfs.sh
 
       - name: Pack gzip rootfs for the doroUbuntu runtime
         run: |
