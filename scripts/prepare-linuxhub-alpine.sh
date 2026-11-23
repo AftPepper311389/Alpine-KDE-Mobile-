@@ -71,7 +71,7 @@ def patch_manager(s):
     end = s.index('            execute(InitializationStep.CREATE_USER,', start)
     s = s[:start] + '''            execute(InitializationStep.CREATE_CONTAINER, "正在配置 Alpine KDE 桌面") {
                 writeContainerFiles()
-                runAsRoot("apk update && apk add --no-cache sudo shadow bash dbus dbus-x11 pulseaudio fcitx5 fcitx5-gtk fcitx5-qt fcitx5-chinese-addons", "alpine-base-packages")
+                runAsRoot("command -v apk sudo bash dbus-daemon pulseaudio fcitx5 startplasma-x11 kwin_x11 dolphin konsole kate >/dev/null", "alpine-base-packages")
             }
 ''' + s[end:]
 
