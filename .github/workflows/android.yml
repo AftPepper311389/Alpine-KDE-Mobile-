@@ -109,7 +109,58 @@ jobs:
           grep -q '^assets/licenses/libepoxy-' "$RUNNER_TEMP/apk-contents.txt"
           grep -q '^assets/licenses/wayland-' "$RUNNER_TEMP/apk-contents.txt"
           grep -q '^assets/gbm-shim/libgbm.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/egl-override/libegl_override.so$' "$RUNNER_TEMP/apk-contents.txt"
+          grep -q '^assets/egl-override/libegl_override.so
+          grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
+          EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
+          ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/apk-badging.txt"
+          grep -q "package: name='org.alpinekde.mobile'" "$RUNNER_TEMP/apk-badging.txt"
+          sha256sum "$APK"
+          ls -lh "$APK"
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+ "$RUNNER_TEMP/apk-contents.txt"\n          grep -q '^assets/xkb/symbols/us
+          grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
+          EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
+          ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/apk-badging.txt"
+          grep -q "package: name='org.alpinekde.mobile'" "$RUNNER_TEMP/apk-badging.txt"
+          sha256sum "$APK"
+          ls -lh "$APK"
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+ "$RUNNER_TEMP/apk-contents.txt"\n          grep -q '^assets/xkb/rules/evdev
+          grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
+          EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
+          ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/apk-badging.txt"
+          grep -q "package: name='org.alpinekde.mobile'" "$RUNNER_TEMP/apk-badging.txt"
+          sha256sum "$APK"
+          ls -lh "$APK"
+
+      - name: Upload single-APK Alpine KDE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-kde-mobile-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+ "$RUNNER_TEMP/apk-contents.txt"
           grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
           EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
           ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
