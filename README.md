@@ -19,7 +19,7 @@ A single-APK Android host for an embedded Alpine Linux ARM64 system with KDE Pla
 
 ## Not yet implemented or validated
 
-The current APK is **not yet a working KDE desktop**. Rootfs packaging, local extraction, and the PRoot launch path are implemented, but PRoot has not yet been verified on the target phone and the app does not yet launch a Plasma session. An Android-hosted display/input bridge and hardware GPU acceleration remain to be implemented and tested on-device. Do not interpret a successful APK build as proof that PRoot, Plasma, display integration, or hardware acceleration works.
+The current APK is **not yet a working KDE desktop**. Rootfs packaging, local extraction, and the PRoot launch path are implemented in source, but PRoot has not yet been verified on the target phone and the app does not yet launch a Plasma session. An Android-hosted display/input compositor and a nested Plasma session remain to be integrated. Hardware GPU acceleration remains unverified. A successful APK build is not proof that PRoot, Plasma, display integration, or hardware acceleration works.
 
 ## Build
 
@@ -28,8 +28,8 @@ Push to `main` or run **Android CI** manually in GitHub Actions. The workflow bu
 ## Next engineering stages
 
 1. Verify the embedded PRoot executable and Alpine shell on the target device; fix Android kernel/SELinux compatibility issues.
-2. Launch and validate KDE services and the Plasma Wayland session in the runtime.
-3. Integrate a display/compositor bridge hosted by the Android app, including touch, keyboard, and pointer input.
+2. Integrate a Wayland compositor hosted by the Android app and route touch, keyboard, and pointer input.
+3. Run KDE's Wayland session nested inside that compositor and validate Plasma shell/window management.
 4. Validate GPU rendering through Android-supported graphics interfaces on the target hardware; software rendering does not count.
 5. Produce a signed release APK with complete third-party license texts and on-device test evidence.
 
