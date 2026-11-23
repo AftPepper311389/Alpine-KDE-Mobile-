@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$GITHUB_WORKSPACE"
 WORK="$ROOT/.work/wldroid"
 WLDROID_COMMIT="9560e767bb3e31f3d9b72d280e051c47cda35cf1"
-ROOTFS_ARCHIVE="$ROOT/app/src/main/assets/alpine-rootfs-aarch64.tar.xz"
+ROOTFS_ARCHIVE="$ROOT/.work/alpine-assets/alpine-rootfs-aarch64.tar.xz"
 NDK_VERSION="28.0.13004108"
 
 test -s "$ROOTFS_ARCHIVE"
