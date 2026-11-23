@@ -99,7 +99,7 @@ jobs:
           unzip -l "$APK" | grep -q 'assets/alpine-rootfs-aarch64.tar.xz.sha256'
           unzip -l "$APK" | grep -q 'assets/WLDROID-LICENSE.txt'
           unzip -l "$APK" | grep -q 'assets/WLDROID-SOURCE-NOTICE.txt'
-          unzip -l "$APK" | grep -q 'assets/gbm-shim/libgbm.so.1'
+          unzip -l "$APK" | grep -q 'assets/gbm-shim/libgbm.so'
           unzip -l "$APK" | grep -q 'assets/egl-override/libegl_override.so'
           unzip -l "$APK" | grep -q 'assets/drm-shim/libdrm-wrapper.so'
           EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
