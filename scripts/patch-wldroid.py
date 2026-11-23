@@ -107,12 +107,6 @@ patch(desktop_path,
       "import kotlinx.coroutines.launch\n",
       "import kotlinx.coroutines.launch\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\n")
 patch(desktop_path,
-      "import nu.shel.wldroid.launcher.GpuSetupConfig\n",
-      "import nu.shel.wldroid.launcher.GpuSetupConfig\nimport nu.shel.wldroid.launcher.XWaylandConfig\n",
-      count=0) if False else None
-# Avoid duplicate XWaylandConfig import if the previous grouped import already added it.
-
-patch(desktop_path,
       "var isCustom by rememberSaveable { mutableStateOf(false) }",
       "var isCustom by rememberSaveable { mutableStateOf(true) }")
 patch(desktop_path,
