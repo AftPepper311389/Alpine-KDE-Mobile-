@@ -187,7 +187,10 @@ d = replace_method(d, "    fun sessionScript(", "    fun patchDesktop(", r'''   
             "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE DESKTOP_SESSION=plasma; " +
             "export QT_QPA_PLATFORM=xcb QT_X11_NO_MITSHM=1 NO_AT_BRIDGE=1; " +
             "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
-            (if (gpuAcceleration) "unset LIBGL_ALWAYS_SOFTWARE; " else "export LIBGL_ALWAYS_SOFTWARE=1; ") +
+            (if (gpuAcceleration) "export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink; " +
+                "export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json VK_DRIVER_FILES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json; " +
+                "unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE; " else
+                "unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; export LIBGL_ALWAYS_SOFTWARE=1; ") +
             "exec dbus-launch --exit-with-session startplasma-x11"
 
 ''', dfile)
