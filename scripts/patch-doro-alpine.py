@@ -127,7 +127,19 @@ m = replace_method(m, "    fun startDesktop(", "    private fun runAsRoot(", r''
         ensureNetworkConfig()
         installRuntime()
         ensureGetifaddrsBridge()
-        val script = DesktopCompatibility.sessionScript(display, config.username, gpuAcceleration)
+        audioBridge.start()
+        val audioScript = "export XDG_RUNTIME_DIR=/tmp/runtime-" + shell(config.username) + "; " +
+            "mkdir -p \"\$XDG_RUNTIME_DIR\"; chmod 700 \"\$XDG_RUNTIME_DIR\"; " +
+            "pkill -9 -x pulseaudio 2>/dev/null || true; " +
+            "rm -rf \"\$XDG_RUNTIME_DIR/pulse\" /tmp/pulse-*; mkdir -p \"\$XDG_RUNTIME_DIR/pulse\"; " +
+            "pulseaudio --daemonize=yes --use-pid-file=no --exit-idle-time=-1 --load='module-native-protocol-unix' " +
+            "--load='module-pipe-sink sink_name=doro_android file=/run/doro-audio/pulse-output.pcm format=s16le rate=44100 channels=2' " +
+            "--log-target=file:/tmp/doro-pulse.log; " +
+            "doro_audio_try=0; until pactl info >/dev/null 2>&1 || [ \"\$doro_audio_try\" -ge 20 ]; do " +
+            "doro_audio_try=\$((doro_audio_try+1)); sleep 0.2; done; " +
+            "pactl set-default-sink doro_android >/dev/null 2>&1 || true; "
+        val script = audioScript + "export DORO_DESKTOP_TERMINAL=1; " +
+            DesktopCompatibility.sessionScript(display, config.username, gpuAcceleration)
         val startSession = DesktopCompatibility.systemServicesScript() + "; " +
             "exec /bin/su - " + shell(config.username) + " -c " + shell(script)
         return ProcessBuilder(prootCommand("/bin/sh", "-c", startSession))
@@ -186,14 +198,17 @@ d = replace_method(d, "    fun sessionScript(", "    fun patchDesktop(", r'''   
         "export DISPLAY=" + quote(display) + "; " +
             "export XDG_RUNTIME_DIR=/tmp/runtime-" + quote(username) + "; " +
             "mkdir -p \"\$XDG_RUNTIME_DIR\"; chmod 700 \"\$XDG_RUNTIME_DIR\"; " +
+            "export PATH=/usr/local/lib/doro-software-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games; " +
+            "export LANG=C.UTF-8 LC_ALL=C.UTF-8; " +
             "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE DESKTOP_SESSION=plasma; " +
             "export QT_QPA_PLATFORM=xcb QT_X11_NO_MITSHM=1 NO_AT_BRIDGE=1; " +
+            "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx MOZ_ENABLE_WAYLAND=0; " +
             "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
             (if (gpuAcceleration) "export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink; " +
                 "export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json VK_DRIVER_FILES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json; " +
                 "unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE; " else
                 "unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; export LIBGL_ALWAYS_SOFTWARE=1; ") +
-            "exec dbus-launch --exit-with-session startplasma-x11"
+            "exec dbus-launch --exit-with-session /bin/sh -c 'command -v fcitx5 >/dev/null 2>&1 && fcitx5 -d; exec startplasma-x11'"
 
 ''', dfile)
 write(dfile, d)
