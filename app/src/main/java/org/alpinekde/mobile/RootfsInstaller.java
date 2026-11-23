@@ -55,6 +55,16 @@ public final class RootfsInstaller {
 
         try {
             extract(context, temporary, unpackedBytes, listener);
+            File devShm = new File(temporary, "dev/shm");
+            if (!devShm.isDirectory() && !devShm.mkdirs()) {
+                throw new IOException("Cannot create /dev/shm in the guest rootfs.");
+            }
+            File guestTmp = new File(temporary, "tmp");
+            if (!guestTmp.isDirectory() && !guestTmp.mkdirs()) {
+                throw new IOException("Cannot create /tmp in the guest rootfs.");
+            }
+            Os.chmod(devShm.getAbsolutePath(), 01777);
+            Os.chmod(guestTmp.getAbsolutePath(), 01777);
             deleteRecursively(destination);
             if (!temporary.renameTo(destination)) {
                 throw new IOException("Cannot finalize the installed rootfs directory.");
