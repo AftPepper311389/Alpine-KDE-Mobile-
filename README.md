@@ -1,6 +1,6 @@
 # Alpine KDE Mobile
 
-A single-APK Android host for an embedded Alpine Linux ARM64 system with KDE Plasma as the target desktop.
+A single-APK Android host for an embedded Alpine Linux ARM64 system with KDE Plasma.
 
 ## Non-negotiable target
 
@@ -8,27 +8,26 @@ A single-APK Android host for an embedded Alpine Linux ARM64 system with KDE Pla
 - No root requirement.
 - No separate Termux, Termux:X11, or other X server application.
 - GitHub Actions is the only build environment; no local compilation is required.
-- GPU acceleration must be reported only after it is demonstrated on target hardware.
+- GPU acceleration is reported only after demonstrated on target hardware.
 
 ## Current implementation
 
-The CI pipeline builds an ARM64 Alpine filesystem inside an ARM64 Alpine container (QEMU emulation on the GitHub runner), compresses it, and places the archive under Android app assets. Gradle then packages that archive into the APK. The build verifies that the archive contains the Alpine package manager and BusyBox.
+GitHub Actions uses QEMU to run an ARM64 Alpine 3.24.4 container. The build installs the Alpine base system, KDE Plasma desktop/workspace/window manager, Konsole, and Dolphin from the official v3.24 main/community repositories. The resulting root filesystem is compressed and packaged into Android app assets. CI verifies the APK contains the rootfs, the Plasma Wayland session launcher, and an Alpine package/license inventory.
 
-The currently embedded filesystem is a **bootstrap Alpine userspace**, not yet the full KDE Plasma desktop. The Android app currently verifies the embedded payload; it does not yet extract, chroot/PRoot, or launch a Plasma session. Display integration, input forwarding, ADB-assisted setup, and hardware GPU acceleration remain unimplemented and unverified.
+The app checks whether the embedded ARM64 rootfs archive is present. **The APK now targets an embedded KDE userspace, but this does not yet mean the desktop can be launched from Android.** Local extraction, process supervision/PRoot integration, an Android-hosted display/input bridge, and hardware GPU validation are still separate implementation tasks.
 
 ## Build
 
-Push to `main` or run **Android CI** manually in GitHub Actions. The workflow builds the ARM64 rootfs first, then assembles the APK and uploads it as an artifact. The rootfs is generated during CI and is not committed to Git.
+Push to `main` or run **Android CI** manually in GitHub Actions. The workflow builds the rootfs first, assembles the APK, verifies the embedded archive and license inventory, and uploads the APK artifact. The generated rootfs is not committed to Git.
 
 ## Architecture roadmap
 
-1. **Embedded rootfs** — ARM64 Alpine base and checksum packaged in the APK.
-2. **Local installation/runtime** — safe extraction into app-private storage, process supervision, and a PRoot-compatible execution layer where Android kernel restrictions require it.
-3. **KDE payload** — install and verify Plasma desktop packages and dependencies inside the ARM64 rootfs.
-4. **Display/input bridge** — integrate a compositor/rendering path hosted by the Android app, without requiring a second app.
-5. **GPU path** — use Android-supported graphics APIs and validate actual hardware acceleration on the target device; software rendering is not counted.
-6. **Release** — signed release APK, reproducible build metadata, license notices, and on-device verification.
+1. **Embedded Alpine + KDE** — ARM64 rootfs, Plasma, KWin, Konsole, Dolphin, package inventory, and checksum in one APK.
+2. **Local installation/runtime** — safe extraction into app-private storage, process supervision, and a no-root execution strategy.
+3. **Display/input bridge** — integrate a compositor/rendering path hosted by the Android app, without requiring a second app.
+4. **GPU path** — integrate Android-supported graphics APIs and validate actual hardware acceleration on the target device; software rendering is not counted.
+5. **Release** — signed release APK, reproducible build metadata, complete third-party license notices, and on-device verification.
 
 ## Licensing
 
-Alpine packages and KDE components retain their respective upstream licenses. The final distribution must include the applicable license and attribution notices for every redistributed component.
+The build emits an Alpine package/license inventory from the installed APK database. Alpine packages and KDE components retain their upstream licenses; final distribution must include applicable license texts and attribution notices for every redistributed component.
