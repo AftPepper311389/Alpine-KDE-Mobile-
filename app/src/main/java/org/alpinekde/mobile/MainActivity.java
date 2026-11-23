@@ -16,7 +16,8 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends Activity {
     private final ExecutorService installerExecutor = Executors.newSingleThreadExecutor();
     private TextView installStatus;
-    private Button installButton;\n    private Button testButton;
+    private Button installButton;
+    private Button testButton
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
