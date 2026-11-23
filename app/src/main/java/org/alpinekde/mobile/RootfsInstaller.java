@@ -30,7 +30,7 @@ public final class RootfsInstaller {
     private RootfsInstaller() {}
 
     public static boolean isInstalled(Context context) {
-        return new File(context.getFilesDir(), ".alpine-kde-rootfs-installed").isFile();
+        return new File(context.getFilesDir(), ".alpine-kde-rootfs-installed").isFile()\n                && new File(context.getFilesDir(), "alpine-rootfs/usr/bin/startplasma-wayland").isFile();
     }
 
     public static void install(Context context, ProgressListener listener) throws IOException {
@@ -94,7 +94,7 @@ public final class RootfsInstaller {
         String rootCanonical = root.getCanonicalPath() + File.separator;
         long copied = 0;
         byte[] buffer = new byte[64 * 1024];
-        List<File> directories = new ArrayList<>();
+        List<DirectoryEntry> directories = new ArrayList<>();
         List<HardLink> hardLinks = new ArrayList<>();
 
         try (InputStream raw = context.getAssets().open(ASSET_NAME);
@@ -108,7 +108,7 @@ public final class RootfsInstaller {
                     if (!output.isDirectory() && !output.mkdirs()) {
                         throw new IOException("Cannot create directory: " + entry.getName());
                     }
-                    directories.add(output);
+                    directories.add(new DirectoryEntry(output, entry.getMode() & 07777));
                 } else if (entry.isSymbolicLink()) {
                     File parent = output.getParentFile();
                     if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
@@ -186,7 +186,7 @@ public final class RootfsInstaller {
         return String.format(java.util.Locale.US, "%.1f GiB", bytes / (1024.0 * 1024.0 * 1024.0));
     }
 
-    private static final class HardLink {
+    private static final class DirectoryEntry {\n        final File file;\n        final int mode;\n        DirectoryEntry(File file, int mode) {\n            this.file = file;\n            this.mode = mode;\n        }\n    }\n\n    private static final class HardLink {
         final File target;
         final File destination;
         HardLink(File target, File destination) {
