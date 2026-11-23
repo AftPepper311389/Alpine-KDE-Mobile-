@@ -216,12 +216,15 @@ for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
     p = src / rel
     if p.exists():
         t = p.read_text().replace("Ubuntu", "Alpine").replace("ubuntu", "alpine").replace("XFCE", "KDE Plasma")
+        t = t.replace('<string name="app_name">终端</string>', '<string name="app_name">Alpine KDE Mobile</string>')
         p.write_text(t)
 
 # The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
 p = src / "app/build.gradle.kts"
 g = p.read_text()
 g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")')
+g = g.replace('versionCode = 69', 'versionCode = 120')
+g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"')
 p.write_text(g)
 PY
 
