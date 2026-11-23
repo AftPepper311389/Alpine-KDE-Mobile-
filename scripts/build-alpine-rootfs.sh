@@ -42,8 +42,9 @@ awk '
     /^L:/ { print package " " version " " $0 }
 ' "$ROOTFS/lib/apk/db/installed" > "$ASSETS/ALPINE-LICENSES.txt"
 
-cat > "$ASSETS/rootfs-build-info.txt" <<'EOF'
-ALPINE_VERSION=3.24.4
+ALPINE_RELEASE="$(cat "$ROOTFS/etc/alpine-release")"
+cat > "$ASSETS/rootfs-build-info.txt" <<EOF
+ALPINE_VERSION=$ALPINE_RELEASE
 ARCHITECTURE=aarch64
 KDE_DESKTOP=installed
 KDE_COMPONENTS=plasma-desktop,plasma-workspace,kwin
