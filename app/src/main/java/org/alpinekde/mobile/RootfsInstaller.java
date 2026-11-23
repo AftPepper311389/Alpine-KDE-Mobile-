@@ -30,7 +30,8 @@ public final class RootfsInstaller {
     private RootfsInstaller() {}
 
     public static boolean isInstalled(Context context) {
-        return new File(context.getFilesDir(), ".alpine-kde-rootfs-installed").isFile()\n                && new File(context.getFilesDir(), "alpine-rootfs/usr/bin/startplasma-wayland").isFile();
+        return new File(context.getFilesDir(), ".alpine-kde-rootfs-installed").isFile()
+                && new File(context.getFilesDir(), "alpine-rootfs/usr/bin/startplasma-wayland").isFile();
     }
 
     public static void install(Context context, ProgressListener listener) throws IOException {
@@ -186,7 +187,16 @@ public final class RootfsInstaller {
         return String.format(java.util.Locale.US, "%.1f GiB", bytes / (1024.0 * 1024.0 * 1024.0));
     }
 
-    private static final class DirectoryEntry {\n        final File file;\n        final int mode;\n        DirectoryEntry(File file, int mode) {\n            this.file = file;\n            this.mode = mode;\n        }\n    }\n\n    private static final class HardLink {
+    private static final class DirectoryEntry {
+        final File file;
+        final int mode;
+        DirectoryEntry(File file, int mode) {
+            this.file = file;
+            this.mode = mode;
+        }
+    }
+
+    private static final class HardLink {
         final File target;
         final File destination;
         HardLink(File target, File destination) {
