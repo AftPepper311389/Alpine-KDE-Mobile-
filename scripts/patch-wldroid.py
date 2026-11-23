@@ -21,7 +21,7 @@ def patch(relative, old, new, count=1):
 assets = root / "testapp/src/main/assets"
 assets.mkdir(parents=True, exist_ok=True)
 shutil.copy2(archive, assets / "alpine-rootfs-aarch64.tar.xz")
-for name in ("ALPINE-LICENSES.txt", "rootfs-build-info.txt", "alpine-kde-package-check.txt"):
+for name in ("ALPINE-LICENSES.txt", "rootfs-build-info.txt", "alpine-kde-package-check.txt", "alpine-rootfs-aarch64.tar.xz.sha256"):
     source = archive.parent / name
     if source.exists():
         shutil.copy2(source, assets / name)
