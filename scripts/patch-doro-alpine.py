@@ -225,4 +225,12 @@ gradle = gradle.replace('noCompress += listOf("tar")', 'noCompress += listOf("ta
 gradle = re.sub(r"(?s)\n// Force use of ARM64 binaries for AAPT2 in Proot environment.*?\n\ndependencies \{", "\n\ndependencies {", gradle, count=1)
 write(gradle_file, gradle)
 
+wrapper_file = "gradle/wrapper/gradle-wrapper.properties"
+wrapper = read(wrapper_file)
+wrapper = wrapper.replace(
+    "distributionUrl=file:///root/gradle/gradle-9.1.0-bin.zip",
+    "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
+)
+write(wrapper_file, wrapper)
+
 print("Patched doroUbuntu Android runtime for Alpine 3.21 + KDE Plasma X11.")
