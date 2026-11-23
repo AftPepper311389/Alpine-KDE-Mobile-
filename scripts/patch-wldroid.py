@@ -126,7 +126,9 @@ patch(desktop_path,
     LaunchedEffect(context, viewModel.compositorConfig.xkbBasePath, xkbAttempt) {
         xkbError = null
         try {
-            withContext(Dispatchers.IO) {\n                XkbExtractor(context).extract(viewModel.compositorConfig.xkbBasePath)\n            }
+            withContext(Dispatchers.IO) {
+                XkbExtractor(context).extract(viewModel.compositorConfig.xkbBasePath)
+            }
             xkbReady = true
         } catch (error: Exception) {
             xkbError = error.message ?: "Failed to prepare keyboard layouts"
