@@ -1,63 +1,43 @@
-#!/bin/sh
+#!/usr/bin/env sh
 set -eu
 
-ROOTFS="/workspace/.work/alpine-rootfs"
-ASSETS="/workspace/.work/alpine-assets"
-REPOSITORIES="/workspace/.work/repositories"
+ROOTFS="${ROOTFS_DIR:-$PWD/.work/alpine-rootfs}"
+APK_REPO="https://dl-cdn.alpinelinux.org/alpine/v3.21"
+mkdir -p "$ROOTFS/etc/apk" "$ROOTFS/etc/profile.d" "$ROOTFS/root" "$ROOTFS/tmp"
+printf '%s\n' "$APK_REPO/main" "$APK_REPO/community" > "$ROOTFS/etc/apk/repositories"
 
-rm -rf "$ROOTFS"
-mkdir -p "$ROOTFS" "$ASSETS" /workspace/.work
+apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
+  --repositories-file "$ROOTFS/etc/apk/repositories" add --no-cache \
+  alpine-base bash shadow sudo dbus dbus-x11 polkit elogind \
+  plasma-desktop plasma-workspace plasma-workspace-x11 kwin \
+  dolphin konsole kate systemsettings plasma-nm plasma-pa \
+  pulseaudio xwayland xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk \
+  fcitx5 fcitx5-gtk fcitx5-qt fcitx5-chinese-addons \
+  mesa-dri-gallium mesa-egl mesa-gl mesa-gles gcompat \
+  font-noto font-noto-cjk ttf-dejavu breeze breeze-icons \
+  fastfetch git curl wget python3 py3-pip build-base cmake \
+  nodejs npm openjdk17-jdk rust cargo go \
+  tzdata ca-certificates shared-mime-info procps coreutils util-linux
 
-cat > "$REPOSITORIES" <<'EOF'
-https://dl-cdn.alpinelinux.org/alpine/v3.24/main
-https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
+printf '%s\n' 'nameserver 1.1.1.1' 'nameserver 8.8.8.8' > "$ROOTFS/etc/resolv.conf"
+printf '%s\n' 'alpine-kde' > "$ROOTFS/etc/hostname"
+printf '%s\n' 'export LANG=zh_CN.UTF-8' 'export LC_ALL=zh_CN.UTF-8' \
+  'export LANGUAGE=zh_CN:zh' 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
+  > "$ROOTFS/etc/profile.d/00-locale.sh"
+cat > "$ROOTFS/etc/profile.d/99-mobile-memory.sh" <<'EOF'
+export MALLOC_ARENA_MAX=2
+export MESA_SHADER_CACHE_MAX_SIZE=128M
+export QT_QUICK_CONTROLS_MATERIAL_VARIANT=Dense
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-/tmp/.cache-$USER}"
 EOF
-
-# Install genuine ARM64 Alpine packages in a native ARM64 container.
-apk --root "$ROOTFS" \
-    --initdb \
-    --arch aarch64 \
-    --keys-dir /etc/apk/keys \
-    --repositories-file "$REPOSITORIES" \
-    add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus sudo gcompat \
-        plasma-desktop plasma-workspace kwin konsole dolphin xwayland \
-        mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
-        libxkbcommon xkeyboard-config
-
-# Drop package download caches; keep the apk database and repository configuration.
-rm -rf "$ROOTFS/var/cache/apk" "$ROOTFS/tmp/"* "$ROOTFS/var/tmp/"*
-mkdir -p "$ROOTFS/etc/apk"
-cp "$REPOSITORIES" "$ROOTFS/etc/apk/repositories"
-printf '%s\n' "Alpine KDE Mobile ARM64 rootfs" > "$ROOTFS/etc/alpine-kde-mobile"
-
-grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|font-dejavu|font-droid-nonlatin|xwayland)$' \
-    "$ROOTFS/lib/apk/db/installed" > "$ASSETS/alpine-kde-package-check.txt"
-
-# Preserve a machine-readable package/license inventory for redistribution notices.
-awk '
-    /^P:/ { package=$0 }
-    /^V:/ { version=$0 }
-    /^L:/ { print package " " version " " $0 }
-' "$ROOTFS/lib/apk/db/installed" > "$ASSETS/ALPINE-LICENSES.txt"
-
-ALPINE_RELEASE="$(cat "$ROOTFS/etc/alpine-release")"
-cat > "$ASSETS/rootfs-build-info.txt" <<EOF
-ALPINE_VERSION=$ALPINE_RELEASE
-ARCHITECTURE=aarch64
-KDE_DESKTOP=installed
-KDE_COMPONENTS=plasma-desktop,plasma-workspace,kwin
-APPLICATIONS=konsole,dolphin
-FONTS=font-dejavu,font-droid-nonlatin,font-freefont
-GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles
-GLIBC_COMPATIBILITY=gcompat
-ROOTFS_SOURCE=official Alpine v3.24 main and community repositories
-ROOTFS_FORMAT=tar.xz
-EOF
-
-echo "Built Alpine ARM64 + KDE Plasma rootfs directory:"
-du -sh "$ROOTFS"
-grep -E '^P:(plasma-desktop|plasma-workspace|kwin)$' "$ROOTFS/lib/apk/db/installed"
-test -x "$ROOTFS/usr/bin/startplasma-wayland"
-test -x "$ROOTFS/usr/bin/kwin_wayland"
-test -x "$ROOTFS/usr/bin/dbus-run-session"
-test -x "$ROOTFS/usr/bin/Xwayland"
+printf '%s\n' 'Asia/Shanghai' > "$ROOTFS/etc/timezone"
+ln -snf /usr/share/zoneinfo/Asia/Shanghai "$ROOTFS/etc/localtime"
+mkdir -p "$ROOTFS/usr/share/xsessions"
+test -x "$ROOTFS/usr/bin/startplasma-x11"
+test -x "$ROOTFS/usr/bin/kwin_x11"
+test -x "$ROOTFS/usr/bin/dbus-run-session" || test -x "$ROOTFS/usr/bin/dbus-launch"
+test -x "$ROOTFS/usr/bin/dolphin"
+test -x "$ROOTFS/usr/bin/konsole"
+printf '%s\n' 'ROOTFS=Alpine 3.21 aarch64' 'DESKTOP=KDE Plasma 6 X11' 'DISPLAY_BACKEND=Lorie X11' \
+  > "$ROOTFS/etc/alpine-kde-mobile-build-info"
