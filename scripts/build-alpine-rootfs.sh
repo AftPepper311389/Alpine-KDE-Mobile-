@@ -9,8 +9,8 @@ rm -rf "$ROOTFS"
 mkdir -p "$ROOTFS" "$ASSETS" /workspace/.work
 
 cat > "$REPOSITORIES" <<'EOF'
-https://dl-cdn.alpinelinux.org/alpine/v3.22/main
-https://dl-cdn.alpinelinux.org/alpine/v3.22/community
+https://dl-cdn.alpinelinux.org/alpine/v3.21/main
+https://dl-cdn.alpinelinux.org/alpine/v3.21/community
 EOF
 
 # Install genuine ARM64 Alpine packages in a native ARM64 container.
@@ -45,13 +45,13 @@ cat > "$ASSETS/rootfs-build-info.txt" <<EOF
 ALPINE_VERSION=$ALPINE_RELEASE
 ARCHITECTURE=aarch64
 KDE_DESKTOP=installed
-KDE_COMPONENTS=plasma-desktop,plasma-workspace,kwin
+KDE_COMPONENTS=plasma-desktop,plasma-workspace,plasma-workspace-x11,kwin
 APPLICATIONS=konsole,dolphin
 FONTS=font-dejavu,font-droid-nonlatin,font-freefont
 GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles
 GLIBC_COMPATIBILITY=gcompat
-ROOTFS_SOURCE=official Alpine v3.22 main and community repositories
-ROOTFS_FORMAT=tar.xz (also validated for the doroUbuntu X11 runtime)
+ROOTFS_SOURCE=official Alpine v3.21 main and community repositories
+ROOTFS_FORMAT=tar.gz (doroUbuntu X11 runtime)
 EOF
 
 echo "Built Alpine ARM64 + KDE Plasma rootfs directory:"
