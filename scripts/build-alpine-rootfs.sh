@@ -22,7 +22,7 @@ apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
 printf '%s\n' 'nameserver 1.1.1.1' 'nameserver 8.8.8.8' > "$ROOTFS/etc/resolv.conf"
 printf '%s\n' 'alpine-kde' > "$ROOTFS/etc/hostname"
-printf '%s\n' 'export LANG=zh_CN.UTF-8' 'export LC_ALL=zh_CN.UTF-8' \
+printf '%s\n' 'export LANG=C.UTF-8' 'export LC_ALL=C.UTF-8' \
   'export LANGUAGE=zh_CN:zh' 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' \
   > "$ROOTFS/etc/profile.d/00-locale.sh"
 cat > "$ROOTFS/etc/profile.d/99-mobile-memory.sh" <<'EOF'
