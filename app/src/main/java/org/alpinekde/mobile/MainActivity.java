@@ -17,7 +17,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService installerExecutor = Executors.newSingleThreadExecutor();
     private TextView installStatus;
     private Button installButton;
-    private Button testButton
+    private Button testButton;
 
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
@@ -112,7 +112,7 @@ public final class MainActivity extends Activity {
         testButton.setOnClickListener(view -> runRuntimeTest());
 
         addSection(content, "Runtime and graphics status",
-                "Linux process runtime / PRoot: not integrated\nKDE session launch: not implemented\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
+                "PRoot runtime: embedded in APK\nAlpine shell smoke test: available after local install\nKDE session launch: not implemented\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
         addSection(content, "Important",
                 "This stage embeds and locally installs the Alpine + KDE filesystem. It does not yet launch the desktop. The next work is a no-root Linux process runtime and an in-app display/input bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
 
