@@ -1,38 +1,47 @@
 # Alpine KDE Mobile
 
-A single-APK Android host for an embedded Alpine Linux ARM64 system with KDE Plasma.
+A single-APK Android application intended to run a bundled Alpine Linux ARM64 root filesystem with KDE Plasma, without Root, Termux, or a separate X11 application.
 
-## Target constraints
+## Target
 
-- One installable APK contains Alpine ARM64 and KDE Plasma; first installation does not download the Linux filesystem.
-- No root and no separate Termux:X11 or other X server application.
-- All compilation and packaging is performed by GitHub Actions.
-- Hardware GPU acceleration is claimed only after validation on the target phone.
+- One APK contains the Alpine ARM64 rootfs, KDE Plasma, the no-root Linux runtime, Android-hosted Wayland compositor, and graphics bridge.
+- First launch extracts the bundled rootfs locally; it does not download Alpine or KDE.
+- All build and packaging work runs in GitHub Actions. No local compilation is required.
+- Android API 29+ is required by the integrated WLDroid compositor stack.
+- Hardware GPU acceleration is only considered verified after testing on the target phone.
 
-## Implemented in the repository
+## Build architecture
 
-- GitHub Actions uses QEMU to run an ARM64 Alpine 3.24.4 container.
-- The build installs Alpine base, KDE Plasma desktop/workspace, KWin, Konsole, and Dolphin from official Alpine v3.24 main/community repositories.
-- The generated rootfs, checksum, build metadata, and package/license inventory are packaged into the APK.
-- CI builds a pinned ARM64 Android PRoot executable and companion loader with the Android NDK. These executables are packaged as native libraries so Android installs them in `nativeLibraryDir`, the executable location needed by modern Android SELinux/W^X policy.
-- The Android app can extract the rootfs offline into app-private storage and includes a PRoot smoke-test action that attempts to run Alpine commands inside it.
+The GitHub Actions workflow builds the Alpine rootfs in an ARM64 Alpine 3.24.4 container using the official v3.24 main and community repositories. It installs Plasma Desktop/Workspace, KWin, Konsole, Dolphin, Mesa GLES/GBM/DRI components, XWayland, and gcompat for compatibility with the graphics shims.
 
-## Not yet implemented or validated
+The APK is assembled from a pinned WLDroid source revision. WLDroid contributes:
 
-The current APK is **not yet a working KDE desktop**. Rootfs packaging, local extraction, and the PRoot launch path are implemented in source, but PRoot has not yet been verified on the target phone and the app does not yet launch a Plasma session. An Android-hosted display/input compositor and a nested Plasma session remain to be integrated. Hardware GPU acceleration remains unverified. A successful APK build is not proof that PRoot, Plasma, display integration, or hardware acceleration works.
+- An Android-hosted Wayland compositor rendered into the app's own Android surface.
+- PRoot for running the ARM64 Alpine userspace without Root.
+- A VirGL GLES server and graphics compatibility shims.
+- Android input, display, session, and process-lifecycle integration.
 
-## Build
+The integration patch changes WLDroid's initial environment from a Debian download to importing the embedded Alpine tar.xz archive, configures the Alpine library paths, and opens directly on the KDE desktop screen. The default desktop command is `dbus-run-session -- startplasma-wayland`, which is intended to start KWin nested under the app-hosted Wayland compositor.
 
-Push to `main` or run **Android CI** manually in GitHub Actions. The workflow builds the rootfs and PRoot runtime, assembles the APK, verifies its contents, and uploads the APK artifact. Generated rootfs and native binaries are not committed to Git.
+## Current verification boundary
 
-## Next engineering stages
+CI is configured to verify that the APK contains the Alpine KDE archive, WLDroid compositor, PRoot, VirGL server, graphics shims, and the expected Android package ID. **That is build-time verification, not proof that KDE launches or that the GPU is hardware-accelerated on a phone.** PRoot/SELinux compatibility, the nested KWin session, VirGL GLES, touch/keyboard behavior, and sustained desktop stability still require on-device testing. If VirGL cannot initialize, the app may need a software-rendering fallback; software rendering will not be described as hardware acceleration.
 
-1. Verify the embedded PRoot executable and Alpine shell on the target device; fix Android kernel/SELinux compatibility issues.
-2. Integrate a Wayland compositor hosted by the Android app and route touch, keyboard, and pointer input.
-3. Run KDE's Wayland session nested inside that compositor and validate Plasma shell/window management.
-4. Validate GPU rendering through Android-supported graphics interfaces on the target hardware; software rendering does not count.
-5. Produce a signed release APK with complete third-party license texts and on-device test evidence.
+## Build and artifact
+
+Push to `main` or run **Android CI** manually in GitHub Actions. The workflow builds the Alpine rootfs, checks its package inventory and checksum, clones the pinned WLDroid source and submodules, applies the Alpine integration patch, builds the native Android components, and assembles one APK. The artifact is named `alpine-kde-mobile-debug`.
+
+The APK is expected to be large because the complete Linux userspace and graphics/runtime components are embedded. The rootfs is not committed to Git; it is generated during CI and packed directly into the APK.
+
+## Next validation steps
+
+1. Get a clean GitHub Actions build and inspect the resulting APK contents and size.
+2. Install the APK on an Android API 29+ ARM64 phone and verify offline rootfs import.
+3. Run the PRoot Alpine shell and confirm the nested KDE Plasma session starts.
+4. Confirm VirGL reports the GLES path and validate actual Adreno/Android GPU activity; compare against software fallback.
+5. Fix any device-specific launch, touch, keyboard, audio, and power-management issues.
+6. Produce a signed release APK and a complete third-party license bundle.
 
 ## Licensing
 
-The build emits an Alpine package/license inventory from the installed APK database. PRoot is GPL-2.0 and its corresponding source is pinned in the build script; Alpine/KDE packages and bundled dependencies retain their upstream licenses. Final distribution must include all applicable license texts and attributions.
+Alpine package license metadata is included with the embedded rootfs. The build also includes WLDroid's license and third-party notices. PRoot, wlroots, VirGL, Mesa, KDE, and other components retain their upstream licenses; final distribution must preserve the applicable source and license obligations.
