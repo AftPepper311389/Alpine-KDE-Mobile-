@@ -2,7 +2,7 @@
 set -eu
 
 ROOTFS="/workspace/.work/alpine-rootfs"
-ASSETS="/workspace/app/src/main/assets"
+ASSETS="/workspace/.work/alpine-assets"
 ARCHIVE="$ASSETS/alpine-rootfs-aarch64.tar.xz"
 REPOSITORIES="/workspace/.work/repositories"
 
