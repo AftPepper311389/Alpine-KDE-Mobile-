@@ -241,6 +241,55 @@ patch(module_path,
       "            gpuMode = GpuMode.AUTO,",
       "            gpuMode = GpuMode.VIRGL_GLES,")
 
+# Use resilient, checksum-verified talloc downloads; the primary Samba host
+# can reset long-running GitHub-hosted runner connections.
+patch(
+    "proot/native/build-proot.sh",
+    '    curl -fSL "$TALLOC_URL" -o "$TALLOC_TAR"',
+    '''    if [ "$TALLOC_VERSION" != "2.4.3" ]; then
+        echo "No pinned SHA-512 is configured for talloc $TALLOC_VERSION" >&2
+        exit 1
+    fi
+    TALLOC_SHA512="7174a069dd3d4ebf8c04fee3434fd50269015bb8f039839e7e7723f431d089b66fb0167e8893bff2d1c392de1ac33665e5b278168246da30d528d522b0e1d5bd"
+    TALLOC_URLS=(
+        "$TALLOC_URL"
+        "https://mirror.freedif.org/pub/blfs/conglomeration/talloc/talloc-${TALLOC_VERSION}.tar.gz"
+    )
+    downloaded=false
+    for url in "${TALLOC_URLS[@]}"; do
+        echo "  Trying $url"
+        rm -f "$TALLOC_TAR"
+        if curl --fail --location --silent --show-error \\
+            --connect-timeout 20 --max-time 90 \\
+            --retry 2 --retry-all-errors --retry-delay 2 \\
+            "$url" -o "$TALLOC_TAR" &&
+            echo "$TALLOC_SHA512  $TALLOC_TAR" | sha512sum --check --status &&
+            tar -tzf "$TALLOC_TAR" >/dev/null; then
+            downloaded=true
+            break
+        fi
+        echo "  Download or SHA-512 verification failed; trying next mirror" >&2
+    done
+    if [ "$downloaded" != true ]; then
+        echo "ERROR: Unable to download verified talloc $TALLOC_VERSION source" >&2
+        exit 1
+    fi''',
+)
+patch(
+    "testapp/build.gradle.kts",
+    '''    buildFeatures {
+        compose = true
+    }''',
+    '''    buildFeatures {
+        compose = true
+    }
+
+    // The rootfs is already XZ-compressed; do not deflate it again in the APK.
+    androidResources {
+        noCompress += "xz"
+    }''',
+)
+
 # Start directly on the KDE desktop screen.
 nav_path = "testapp/src/main/java/nu/shel/wldroid/testapp/navigation/TestAppNavigation.kt"
 patch(nav_path,
