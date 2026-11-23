@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build-debug-apk:
-    name: Build embedded Alpine KDE ARM64 APK
+    name: Build embedded Alpine KDE Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -60,21 +60,34 @@ jobs:
         with:
           packages: platform-tools
 
+      - name: Install Android SDK packages and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358"
+
+      - name: Build Android PRoot runtime for arm64-v8a
+        run: bash scripts/build-proot-android.sh
+
+      - name: Verify Android PRoot runtime
+        run: |
+          test -x app/src/main/assets/proot/proot
+          test -s app/src/main/assets/proot/loader
+          readelf -h app/src/main/assets/proot/proot | grep -q 'AArch64'
+          test -s app/src/main/assets/PROOT-COPYING.txt
+          test -s app/src/main/assets/proot/SHA256SUMS
+
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify APK contains Alpine KDE rootfs
+      - name: Verify APK contains Alpine KDE and PRoot
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           unzip -l "$APK" | grep 'assets/alpine-rootfs-aarch64.tar.gz'
+          unzip -l "$APK" | grep 'assets/proot/proot'
+          unzip -l "$APK" | grep 'assets/proot/loader'
           unzip -l "$APK" | grep 'assets/ALPINE-LICENSES.txt'
-          unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.gz | sha256sum
+          unzip -l "$APK" | grep 'assets/PROOT-COPYING.txt'
           ls -lh "$APK"
 
       - name: Upload debug APK
