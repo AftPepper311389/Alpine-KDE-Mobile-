@@ -107,6 +107,53 @@ patch(desktop_path,
       "import kotlinx.coroutines.launch\n",
       "import kotlinx.coroutines.launch\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\n")
 patch(desktop_path,
+      "import androidx.compose.material3.Button\n",
+      "import androidx.compose.material3.Button\nimport androidx.compose.material3.CircularProgressIndicator\n")
+patch(desktop_path,
+      "import androidx.compose.ui.platform.LocalFocusManager\n",
+      "import androidx.compose.ui.platform.LocalFocusManager\nimport androidx.compose.ui.platform.LocalContext\n")
+patch(desktop_path,
+      "import nu.shel.wldroid.compositor.CompositorState\n",
+      "import nu.shel.wldroid.compositor.CompositorState\nimport nu.shel.wldroid.compositor.XkbExtractor\n")
+patch(desktop_path,
+      "    val service by serviceFlow.collectAsState()\n",
+      """    val service by serviceFlow.collectAsState()
+    val context = LocalContext.current
+    var xkbReady by rememberSaveable { mutableStateOf(false) }
+    var xkbError by remember { mutableStateOf<String?>(null) }
+    var xkbAttempt by remember { mutableStateOf(0) }
+
+    LaunchedEffect(context, viewModel.compositorConfig.xkbBasePath, xkbAttempt) {
+        xkbError = null
+        try {
+            XkbExtractor(context).extract(viewModel.compositorConfig.xkbBasePath)
+            xkbReady = true
+        } catch (error: Exception) {
+            xkbError = error.message ?: "Failed to prepare keyboard layouts"
+        }
+    }
+""")
+patch(desktop_path,
+      "    val surfaceState = remember(viewModel.compositorConfig, viewModel.compositorSession) {",
+      """    if (!xkbReady) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (xkbError == null) CircularProgressIndicator()
+                Text(xkbError ?: "Preparing keyboard layouts…")
+                if (xkbError != null) {
+                    Button(onClick = { xkbAttempt++ }) { Text("Retry") }
+                }
+            }
+        }
+        return
+    }
+
+    val surfaceState = remember(viewModel.compositorConfig, viewModel.compositorSession) {""")
+
+patch(desktop_path,
       "var isCustom by rememberSaveable { mutableStateOf(false) }",
       "var isCustom by rememberSaveable { mutableStateOf(true) }")
 patch(desktop_path,
