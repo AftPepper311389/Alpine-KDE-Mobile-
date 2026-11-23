@@ -20,6 +20,21 @@ git -C "$WORK" checkout --detach "$DORO_COMMIT"
 
 ASSETS="$WORK/app/src/main/assets"
 mkdir -p "$ASSETS/rootfs"
+
+# doroUbuntu's vendored xorgproto snapshot omits Xfuncproto.h, required by libfontenc.
+XORGPROTO_VERSION="2025.1"
+XORGPROTO_SHA256="56898c716c0578df8a2d828c9c3e5c528277705c0484381a81960fe1a67668e8"
+XORGPROTO_ARCHIVE="$WORK/xorgproto-$XORGPROTO_VERSION.tar.xz"
+curl -fL --retry 3 --retry-delay 2 \
+  "https://xorg.freedesktop.org/archive/individual/proto/xorgproto-$XORGPROTO_VERSION.tar.xz" \
+  -o "$XORGPROTO_ARCHIVE"
+echo "$XORGPROTO_SHA256  $XORGPROTO_ARCHIVE" | sha256sum -c -
+mkdir -p "$WORK/xorgproto-source"
+tar -xJf "$XORGPROTO_ARCHIVE" --strip-components=1 -C "$WORK/xorgproto-source"
+LORIE_XORGPROTO="$WORK/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/xorgproto"
+install -D -m 0644 "$WORK/xorgproto-source/include/X11/Xfuncproto.h" \
+  "$LORIE_XORGPROTO/include/X11/Xfuncproto.h"
+cp "$WORK/xorgproto-source/COPYING-x11proto" "$ASSETS/XORGPROTO-LICENSE.txt"
 cp "$ROOTFS" "$ASSETS/rootfs/alpine-kde-aarch64.tar.gz"
 cp "$ROOTFS_SHA_FILE" "$ASSETS/rootfs/alpine-kde-aarch64.tar.gz.sha256"
 cp "$ROOT/.work/alpine-assets/ALPINE-LICENSES.txt" "$ASSETS/ALPINE-LICENSES.txt"
@@ -33,7 +48,7 @@ Root filesystem: Alpine Linux 3.21 ARM64 with KDE Plasma 6 / KWin X11
 Root filesystem source: official Alpine v3.21 main and community repositories
 Root filesystem SHA-256: $ROOTFS_SHA
 The Android app uses the doroUbuntu PRoot and built-in Lorie X11 runtime, adapted for Alpine.
-See DORO-LICENSE.txt, DORO-NOTICE.txt, and ALPINE-LICENSES.txt.
+Build-time Xorg protocol header: xorgproto 2025.1 (SHA-256: 56898c716c0578df8a2d828c9c3e5c528277705c0484381a81960fe1a67668e8).\nSee DORO-LICENSE.txt, DORO-NOTICE.txt, XORGPROTO-LICENSE.txt, and ALPINE-LICENSES.txt.
 EOF
 
 python3 "$ROOT/scripts/patch-doro-alpine.py" "$WORK" --rootfs-sha256 "$ROOTFS_SHA"
@@ -59,7 +74,26 @@ cp "$APK" "$ROOT/app/build/outputs/apk/debug/Alpine-KDE-Mobile.apk"
 grep -q "package: name='org.alpinekde.mobile'" "$ROOT/.work/doro/apk-badging.txt"
 unzip -Z1 "$APK" > "$ROOT/.work/doro/apk-contents.txt"
 grep -q '^assets/rootfs/alpine-kde-aarch64.tar.gz$' "$ROOT/.work/doro/apk-contents.txt"
-grep -q '^assets/ALPINE-LICENSES.txt$' "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^assets/ALPINE-LICENSES.txt
+grep -q '^lib/arm64-v8a/libproot.so$' "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^lib/arm64-v8a/libproot-loader.so$' "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^assets/runtime/arm64-v8a/libgetifaddrs_bridge.so$' "$ROOT/.work/doro/apk-contents.txt"
+EXPECTED_SHA="$ROOTFS_SHA"
+ACTUAL_SHA="$(unzip -p "$APK" assets/rootfs/alpine-kde-aarch64.tar.gz | sha256sum | awk '{print $1}')"
+test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+sha256sum "$APK"
+ls -lh "$APK"
+ "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^assets/XORGPROTO-LICENSE.txt
+grep -q '^lib/arm64-v8a/libproot.so$' "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^lib/arm64-v8a/libproot-loader.so$' "$ROOT/.work/doro/apk-contents.txt"
+grep -q '^assets/runtime/arm64-v8a/libgetifaddrs_bridge.so$' "$ROOT/.work/doro/apk-contents.txt"
+EXPECTED_SHA="$ROOTFS_SHA"
+ACTUAL_SHA="$(unzip -p "$APK" assets/rootfs/alpine-kde-aarch64.tar.gz | sha256sum | awk '{print $1}')"
+test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+sha256sum "$APK"
+ls -lh "$APK"
+ "$ROOT/.work/doro/apk-contents.txt"
 grep -q '^lib/arm64-v8a/libproot.so$' "$ROOT/.work/doro/apk-contents.txt"
 grep -q '^lib/arm64-v8a/libproot-loader.so$' "$ROOT/.work/doro/apk-contents.txt"
 grep -q '^assets/runtime/arm64-v8a/libgetifaddrs_bridge.so$' "$ROOT/.work/doro/apk-contents.txt"
