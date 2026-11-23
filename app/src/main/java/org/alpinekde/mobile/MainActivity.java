@@ -7,6 +7,7 @@ import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.io.InputStream;
 
 public final class MainActivity extends Activity {
     private int dp(float value) {
@@ -22,6 +23,14 @@ public final class MainActivity extends Activity {
         return view;
     }
 
+    private boolean hasEmbeddedAlpineRootfs() {
+        try (InputStream input = getAssets().open("alpine-rootfs-aarch64.tar.gz")) {
+            return input.read() == 0x1f && input.read() == 0x8b;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -30,6 +39,8 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
                 android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
                 android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+
+        boolean rootfsPresent = hasEmbeddedAlpineRootfs();
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -43,18 +54,20 @@ public final class MainActivity extends Activity {
         subParams.topMargin = dp(8);
         content.addView(subtitle, subParams);
 
-        TextView status = text("PROJECT INITIALIZED", 12, true);
-        status.setTextColor(0xFF176B45);
+        TextView status = text(rootfsPresent ? "ALPINE ROOTFS EMBEDDED" : "ROOTFS ASSET MISSING", 12, true);
+        status.setTextColor(rootfsPresent ? 0xFF176B45 : 0xFFB3261E);
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-2, -2);
         statusParams.topMargin = dp(32);
         content.addView(status, statusParams);
 
-        addSection(content, "Target environment",
-                "Alpine Linux stable (3.24.x)\nKDE Plasma desktop\narm64-v8a Android host");
-        addSection(content, "Integration status",
-                "Linux root filesystem: not installed\nPRoot runtime: not integrated\nKDE session: not implemented\nGPU acceleration: not detected or validated\nADB-assisted setup: not implemented");
+        addSection(content, "Embedded Linux payload",
+                "Alpine Linux 3.24.4 · ARM64 (aarch64)\nBootstrap userspace: " +
+                (rootfsPresent ? "present in this APK" : "not found in this APK") +
+                "\nPackage manager: apk · Base utilities: BusyBox");
+        addSection(content, "Desktop integration status",
+                "KDE Plasma desktop packages: not yet embedded\nRootfs extraction: not implemented\nPRoot/process runtime: not integrated\nAndroid-hosted display and input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
         addSection(content, "Important",
-                "This is an early project shell, not a working Linux desktop yet. A successful APK build only verifies the Android application build. It does not prove that Alpine, Plasma, display integration, or hardware GPU acceleration works.");
+                "This build now carries a real Alpine ARM64 bootstrap filesystem inside the APK. It is not yet a complete KDE desktop and cannot launch a Plasma session. The next stages add local extraction, the Linux process runtime, KDE packages, and an in-app display bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
