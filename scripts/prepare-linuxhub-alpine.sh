@@ -113,15 +113,15 @@ def patch_manager(s):
     b = s.index('    private fun ensureTunaAptMirror()', a)
     s = s[:a] + '''    private fun ensureNetworkConfig() {
         File(paths.rootfsDir, "etc/resolv.conf").writeText(
-            "nameserver 1.1.1.1\\n" + "nameserver 8.8.8.8\\n" + "options timeout:2 attempts:3 rotate\\n"
+            listOf("nameserver 1.1.1.1", "nameserver 8.8.8.8", "options timeout:2 attempts:3 rotate").joinToString(10.toChar().toString(), postfix = 10.toChar().toString())
         )
         File(paths.rootfsDir, "etc/apk/repositories").apply {
             parentFile?.mkdirs()
-            writeText("https://dl-cdn.alpinelinux.org/alpine/v3.21/main\\nhttps://dl-cdn.alpinelinux.org/alpine/v3.21/community\\n")
+            writeText(listOf("https://dl-cdn.alpinelinux.org/alpine/v3.21/main", "https://dl-cdn.alpinelinux.org/alpine/v3.21/community").joinToString(10.toChar().toString(), postfix = 10.toChar().toString()))
         }
         File(paths.rootfsDir, "etc/gai.conf").apply {
             parentFile?.mkdirs()
-            writeText("precedence ::ffff:0:0/96  100\\n")
+            writeText("precedence ::ffff:0:0/96  100" + 10.toChar())
         }
     }
 
