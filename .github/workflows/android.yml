@@ -33,6 +33,14 @@ jobs:
             -w /workspace \
             alpine:3.24.4 sh scripts/build-alpine-rootfs.sh
 
+      - name: Pack the ARM64 rootfs on the x86 build host
+        run: |
+          command -v tar
+          command -v xz
+          tar -C .work/alpine-rootfs --numeric-owner -cJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz .
+          sha256sum .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
+          du -sh .work/alpine-rootfs .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
+
       - name: Verify embedded Alpine KDE rootfs
         run: |
           test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
