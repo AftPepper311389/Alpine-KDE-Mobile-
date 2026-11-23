@@ -3,13 +3,21 @@ package org.alpinekde.mobile;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Typeface;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
+    private final ExecutorService installerExecutor = Executors.newSingleThreadExecutor();
+    private TextView installStatus;
+    private Button installButton;
+
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -53,6 +61,7 @@ public final class MainActivity extends Activity {
         boolean rootfsPresent = hasEmbeddedRootfs();
         String buildInfo = readBuildInfo();
         boolean kdePresent = buildInfo.contains("KDE_DESKTOP=installed");
+        boolean installed = RootfsInstaller.isInstalled(this);
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -73,19 +82,59 @@ public final class MainActivity extends Activity {
         content.addView(status, statusParams);
 
         addSection(content, "Embedded Linux payload",
-                "Alpine Linux 3.24.4 · ARM64 (aarch64)\nBootstrap userspace: " +
-                (rootfsPresent ? "present in this APK" : "not found") +
-                "\nKDE Plasma desktop/workspace: " + (kdePresent ? "included in rootfs" : "not verified") +
-                "\nKWin Wayland compositor: " + (kdePresent ? "included in rootfs" : "not verified") +
-                "\nKonsole + Dolphin: " + (kdePresent ? "included in rootfs" : "not verified"));
+                "Alpine Linux 3.24.4 · ARM64 (aarch64)\nKDE Plasma desktop/workspace: " + (kdePresent ? "included in APK" : "not verified") +
+                "\nKWin Wayland compositor: " + (kdePresent ? "included in APK" : "not verified") +
+                "\nKonsole + Dolphin: " + (kdePresent ? "included in APK" : "not verified"));
+        addSection(content, "Local installation",
+                installed ? "Alpine + KDE rootfs is installed in app-private storage." :
+                        "The embedded rootfs can be extracted locally without root or a network download. Keep the app open during installation.");
+        installButton = new Button(this);
+        installButton.setText(installed ? "Alpine + KDE installed" : "Install embedded Alpine + KDE");
+        installButton.setEnabled(rootfsPresent && kdePresent && !installed);
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(-1, -2);
+        buttonParams.topMargin = dp(20);
+        content.addView(installButton, buttonParams);
+
+        installStatus = text(installed ? "Local rootfs installation verified." : "No Linux files are downloaded during installation.", 13, false);
+        installStatus.setTextColor(0xFF5F6368);
+        LinearLayout.LayoutParams messageParams = new LinearLayout.LayoutParams(-1, -2);
+        messageParams.topMargin = dp(8);
+        content.addView(installStatus, messageParams);
+        installButton.setOnClickListener(view -> startInstall());
+
         addSection(content, "Runtime and graphics status",
-                "Rootfs extraction: not implemented\nLinux process runtime: not integrated\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
+                "Linux process runtime / PRoot: not integrated\nKDE session launch: not implemented\nAndroid-hosted display/input bridge: not implemented\nGPU hardware acceleration: not detected or validated");
         addSection(content, "Important",
-                "An embedded KDE userspace is not yet a running desktop. The next work is local extraction, a no-root Linux process runtime, and an in-app display/input bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
+                "This stage embeds and locally installs the Alpine + KDE filesystem. It does not yet launch the desktop. The next work is a no-root Linux process runtime and an in-app display/input bridge. Hardware GPU acceleration will only be claimed after on-device verification.");
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         setContentView(scroll);
+    }
+
+    private void startInstall() {
+        installButton.setEnabled(false);
+        installStatus.setText("Preparing installation…");
+        installerExecutor.execute(() -> {
+            try {
+                RootfsInstaller.install(this, message -> runOnUiThread(() -> installStatus.setText(message)));
+                runOnUiThread(() -> {
+                    installStatus.setText("Alpine + KDE rootfs installed successfully in app-private storage.");
+                    installButton.setText("Alpine + KDE installed");
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    installStatus.setText("Installation failed: " + error.getMessage());
+                    installButton.setEnabled(true);
+                });
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        installerExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     private void addSection(LinearLayout parent, String heading, String body) {
