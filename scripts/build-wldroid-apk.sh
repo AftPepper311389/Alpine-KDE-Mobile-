@@ -53,7 +53,7 @@ copy_licenses() {
   local source_dir="$1"
   local prefix="$2"
   local files=()
-  mapfile -d '' files < <(find "$source_dir" -maxdepth 2 -type f \\( -iname 'COPYING*' -o -iname 'LICENSE*' \\) -print0)
+  mapfile -d '' files < <(find "$source_dir" -maxdepth 2 -type f \( -iname 'COPYING*' -o -iname 'LICENSE*' \) -print0)
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "No license text found under $source_dir" >&2
     exit 1
