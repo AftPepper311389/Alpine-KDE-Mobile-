@@ -48,7 +48,7 @@ export NDK_HOME="$ANDROID_NDK_HOME"
 test -d "$ANDROID_NDK_HOME"
 
 cd "$WORK"
-./gradlew --no-daemon --stacktrace :app:assembleDebug
+bash ./gradlew --no-daemon --stacktrace :app:assembleDebug
 
 APK="$WORK/app/build/outputs/apk/debug/app-debug.apk"
 test -s "$APK"
