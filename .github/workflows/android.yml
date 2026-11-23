@@ -68,11 +68,11 @@ jobs:
 
       - name: Verify Android PRoot runtime
         run: |
-          test -x app/src/main/assets/proot/proot
-          test -s app/src/main/assets/proot/loader
-          readelf -h app/src/main/assets/proot/proot | grep -q 'AArch64'
+          test -x app/src/main/jniLibs/arm64-v8a/libproot.so
+          test -s app/src/main/jniLibs/arm64-v8a/libproot-loader.so
+          readelf -h app/src/main/jniLibs/arm64-v8a/libproot.so | grep -q 'AArch64'
           test -s app/src/main/assets/PROOT-COPYING.txt
-          test -s app/src/main/assets/proot/SHA256SUMS
+          test -s app/src/main/jniLibs/arm64-v8a/SHA256SUMS
 
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
@@ -84,8 +84,8 @@ jobs:
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           unzip -l "$APK" | grep 'assets/alpine-rootfs-aarch64.tar.gz'
-          unzip -l "$APK" | grep 'assets/proot/proot'
-          unzip -l "$APK" | grep 'assets/proot/loader'
+          unzip -l "$APK" | grep 'lib/arm64-v8a/libproot.so'
+          unzip -l "$APK" | grep 'lib/arm64-v8a/libproot-loader.so'
           unzip -l "$APK" | grep 'assets/ALPINE-LICENSES.txt'
           unzip -l "$APK" | grep 'assets/PROOT-COPYING.txt'
           ls -lh "$APK"
