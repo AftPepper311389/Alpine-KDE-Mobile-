@@ -43,11 +43,12 @@ public final class ProotSession {
                 command.add("-b");
                 command.add("/proc/self/fd:/dev/fd");
             }
-            File sharedMemory = new File(rootfs, "dev/shm");
-            if (sharedMemory.isDirectory()) {
-                command.add("-b");
-                command.add(sharedMemory.getAbsolutePath() + ":/dev/shm");
+            File sharedMemory = new File(context.getCacheDir(), "dev-shm");
+            if (!sharedMemory.isDirectory() && !sharedMemory.mkdirs()) {
+                throw new IllegalStateException("Cannot create shared-memory fallback directory.");
             }
+            command.add("-b");
+            command.add(sharedMemory.getAbsolutePath() + ":/dev/shm");
             command.add("-w");
             command.add("/root");
             command.add("/bin/sh");
