@@ -19,7 +19,7 @@ apk --root "$ROOTFS" \
     --arch aarch64 \
     --keys-dir /etc/apk/keys \
     --repositories-file "$REPOSITORIES" \
-    add alpine-base bash ca-certificates tzdata fontconfig font-freefont dbus sudo gcompat \
+    add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus sudo gcompat \
         plasma-desktop plasma-workspace kwin konsole dolphin xwayland \
         mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
         libxkbcommon xkeyboard-config
