@@ -19,7 +19,7 @@ apk --root "$ROOTFS" \
     --arch aarch64 \
     --keys-dir /etc/apk/keys \
     --repositories-file "$REPOSITORIES" \
-    add alpine-base bash ca-certificates tzdata fontconfig font-freefont dbus sudo gcompat \
+    add alpine-base bash ca-certificates tzdata fontconfig font-dejavu font-droid-nonlatin font-freefont dbus sudo gcompat \
         plasma-desktop plasma-workspace kwin konsole dolphin xwayland \
         mesa-dri-gallium mesa-egl mesa-gbm mesa-gl mesa-gles libdrm \
         libxkbcommon xkeyboard-config
@@ -47,6 +47,7 @@ ARCHITECTURE=aarch64
 KDE_DESKTOP=installed
 KDE_COMPONENTS=plasma-desktop,plasma-workspace,kwin
 APPLICATIONS=konsole,dolphin
+FONTS=font-dejavu,font-droid-nonlatin,font-freefont
 GPU_GUEST_STACK=mesa-dri-gallium,mesa-egl,mesa-gbm,mesa-gl,mesa-gles
 GLIBC_COMPATIBILITY=gcompat
 ROOTFS_SOURCE=official Alpine v3.24 main and community repositories
