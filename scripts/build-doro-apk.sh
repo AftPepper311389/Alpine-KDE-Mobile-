@@ -29,8 +29,8 @@ if [[ -f "$WORK/NOTICE" ]]; then cp "$WORK/NOTICE" "$ASSETS/DORO-NOTICE.txt"; fi
 cat > "$ASSETS/ALPINE-KDE-SOURCE-NOTICE.txt" <<EOF
 Android runtime base: https://github.com/AftPepper311389/doroUbuntu
 Pinned source commit: $DORO_COMMIT
-Root filesystem: Alpine Linux 3.22 ARM64 with KDE Plasma 6 / KWin X11
-Root filesystem source: official Alpine v3.22 main and community repositories
+Root filesystem: Alpine Linux 3.21 ARM64 with KDE Plasma 6 / KWin X11
+Root filesystem source: official Alpine v3.21 main and community repositories
 Root filesystem SHA-256: $ROOTFS_SHA
 The Android app uses the doroUbuntu PRoot and built-in Lorie X11 runtime, adapted for Alpine.
 See DORO-LICENSE.txt, DORO-NOTICE.txt, and ALPINE-LICENSES.txt.
