@@ -33,7 +33,7 @@ jobs:
           sudo tar --numeric-owner -czf .work/alpine-rootfs-aarch64.tar.gz \
             -C .work/alpine-rootfs .
           sha256sum .work/alpine-rootfs-aarch64.tar.gz
-          du -sh .work/alpine-rootfs .work/alpine-rootfs-aarch64.tar.gz
+          sudo du -sh .work/alpine-rootfs .work/alpine-rootfs-aarch64.tar.gz
 
       - name: Fetch official Linuxhub 1.2.0 source
         run: |
