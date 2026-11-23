@@ -13,7 +13,7 @@ https://dl-cdn.alpinelinux.org/alpine/v3.24/main
 https://dl-cdn.alpinelinux.org/alpine/v3.24/community
 EOF
 
-# Install genuine ARM64 Alpine packages in an ARM64 container (QEMU on CI).
+# Install genuine ARM64 Alpine packages in a native ARM64 container.
 apk --root "$ROOTFS" \
     --initdb \
     --arch aarch64 \
@@ -30,7 +30,7 @@ mkdir -p "$ROOTFS/etc/apk"
 cp "$REPOSITORIES" "$ROOTFS/etc/apk/repositories"
 printf '%s\n' "Alpine KDE Mobile ARM64 rootfs" > "$ROOTFS/etc/alpine-kde-mobile"
 
-grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|xwayland)$' \
+grep -E '^P:(alpine-base|plasma-desktop|plasma-workspace|kwin|gcompat|mesa-dri-gallium|mesa-egl|mesa-gbm|mesa-gl|mesa-gles|font-dejavu|font-droid-nonlatin|xwayland)$' \
     "$ROOTFS/lib/apk/db/installed" > "$ASSETS/alpine-kde-package-check.txt"
 
 # Preserve a machine-readable package/license inventory for redistribution notices.
