@@ -53,6 +53,28 @@ def patch_models(s):
                   'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus-x11"))')
     s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
                   'FILE_MANAGER("Dolphin 文件管理器", "内置组件", packages = listOf("dolphin", "konsole", "kate"))')
+    s = s.replace('PYTHON("Python", "基础组件", defaultSelected = true, packages = listOf("python3", "python3-pip", "python3-venv"))',
+                  'PYTHON("Python 3", "基础组件", defaultSelected = true, packages = listOf("python3", "py3-pip"))')
+    s = s.replace('CHINESE("中文语言环境", "基础组件", defaultSelected = true, packages = listOf("locales", "language-pack-zh-hans", "fonts-noto-cjk"))',
+                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("font-noto-cjk", "fcitx5", "fcitx5-chinese-addons"))')
+    s = s.replace('FIREFOX("Mozilla Firefox", "内置应用")',
+                  'FIREFOX("Mozilla Firefox", "内置应用", supported = false)')
+    s = s.replace('PYTHON_AI("Python AI 环境", "AI 开发", packages = listOf("python3-numpy", "python3-scipy", "python3-pandas", "python3-sklearn"))',
+                  'PYTHON_AI("Python AI 环境", "AI 开发", supported = false)')
+    s = s.replace('JUPYTER("JupyterLab", "AI 开发", packages = listOf("jupyter-notebook"))',
+                  'JUPYTER("JupyterLab", "AI 开发", supported = false)')
+    s = s.replace('NODE("Node.js", "开发环境", packages = listOf("nodejs", "npm"))',
+                  'NODE("Node.js", "开发环境", supported = false)')
+    s = s.replace('JAVA("Java", "开发环境", packages = listOf("default-jdk"))',
+                  'JAVA("Java", "开发环境", supported = false)')
+    s = s.replace('GCC("GCC/G++", "开发环境", packages = listOf("build-essential"))',
+                  'GCC("GCC/G++", "开发环境", supported = false)')
+    s = s.replace('CMAKE("CMake", "开发环境", packages = listOf("cmake"))',
+                  'CMAKE("CMake", "开发环境", supported = false)')
+    s = s.replace('RUST("Rust", "开发环境", packages = listOf("rustc", "cargo"))',
+                  'RUST("Rust", "开发环境", supported = false)')
+    s = s.replace('GO("Go", "开发环境", packages = listOf("golang-go"))',
+                  'GO("Go", "开发环境", supported = false)')
     return s
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch_models)
 
