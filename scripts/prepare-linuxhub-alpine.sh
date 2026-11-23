@@ -8,6 +8,10 @@ mkdir -p "$ASSETS/rootfs"
 install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz"
 sha256sum "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
 
+# Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
+rm -rf "$ASSETS/offline"
+rm -f "$ASSETS/desktop/ubuntu-wallpaper.jpg" "$ASSETS/desktop/ubuntu-wallpaper.png" "$ASSETS/desktop/whitesur-xfce.tar"
+
 python3 - "$SRC" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256" <<'PY'
 from pathlib import Path
 import re, sys
@@ -54,6 +58,7 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch
 
 # Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Alpine archive.
 def patch_manager(s):
+    s = s.replace('zh_CN.UTF-8', 'C.UTF-8')
     s = s.replace('"Ubuntu 已完成初始化"', '"Alpine 已完成初始化"')
     s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "alpine")')
     s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.21")')
