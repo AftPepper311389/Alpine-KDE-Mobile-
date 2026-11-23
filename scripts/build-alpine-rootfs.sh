@@ -3,14 +3,10 @@ set -eu
 
 ROOTFS="/workspace/.work/alpine-rootfs"
 ASSETS="/workspace/.work/alpine-assets"
-ARCHIVE="$ASSETS/alpine-rootfs-aarch64.tar.xz"
 REPOSITORIES="/workspace/.work/repositories"
 
 rm -rf "$ROOTFS"
 mkdir -p "$ROOTFS" "$ASSETS" /workspace/.work
-
-# GNU tar + xz are build-container tools; they are not installed into the guest.
-apk add --no-cache tar xz
 
 cat > "$REPOSITORIES" <<'EOF'
 https://dl-cdn.alpinelinux.org/alpine/v3.24/main
@@ -57,11 +53,8 @@ ROOTFS_SOURCE=official Alpine v3.24 main and community repositories
 ROOTFS_FORMAT=tar.xz
 EOF
 
-tar -C "$ROOTFS" --numeric-owner -cJf "$ARCHIVE" .
-sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
-
-echo "Built Alpine ARM64 + KDE Plasma rootfs:"
-du -h "$ARCHIVE"
+echo "Built Alpine ARM64 + KDE Plasma rootfs directory:"
+du -sh "$ROOTFS"
 grep -E '^P:(plasma-desktop|plasma-workspace|kwin)$' "$ROOTFS/lib/apk/db/installed"
 test -x "$ROOTFS/usr/bin/startplasma-wayland"
 test -x "$ROOTFS/usr/bin/kwin_wayland"
