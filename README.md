@@ -12,7 +12,7 @@ A single-APK Android application intended to run a bundled Alpine Linux ARM64 ro
 
 ## Build architecture
 
-The GitHub Actions workflow builds the Alpine rootfs in an ARM64 Alpine 3.24.4 container using the official v3.24 main and community repositories. It installs Plasma Desktop/Workspace, KWin, Konsole, Dolphin, Mesa GLES/GBM/DRI components, XWayland, and gcompat for compatibility with the graphics shims.
+The GitHub Actions workflow builds the Alpine rootfs in an ARM64 Alpine 3.24.4 container on a native GitHub ARM64 runner, then builds the Android APK on an x86-64 runner for the Android NDK toolchain. The rootfs uses the official v3.24 main and community repositories. It installs Plasma Desktop/Workspace, KWin, Konsole, Dolphin, Mesa GLES/GBM/DRI components, XWayland, and gcompat for compatibility with the graphics shims.
 
 The APK is assembled from a pinned WLDroid source revision. WLDroid contributes:
 
