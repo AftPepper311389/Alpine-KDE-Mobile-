@@ -30,8 +30,11 @@ License: see WLDROID-LICENSE.txt and THIRD-PARTY-NOTICES.txt
 The APK includes WLDroid's Android compositor, PRoot runtime, VirGL server, and Linux compatibility shims.
 EOF
 
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
 export ANDROID_NDK="$ANDROID_NDK_HOME"
+export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+export NDK_HOME="$ANDROID_NDK_HOME"
 test -d "$ANDROID_NDK_HOME"
 
 cd "$WORK"
