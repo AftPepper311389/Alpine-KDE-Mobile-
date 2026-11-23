@@ -35,15 +35,15 @@ jobs:
 
       - name: Verify embedded Alpine KDE rootfs
         run: |
-          test -s app/src/main/assets/alpine-rootfs-aarch64.tar.xz
-          sha256sum -c app/src/main/assets/alpine-rootfs-aarch64.tar.xz.sha256
-          grep -q '^KDE_DESKTOP=installed$' app/src/main/assets/rootfs-build-info.txt
-          grep -q '^P:plasma-desktop$' app/src/main/assets/alpine-kde-package-check.txt
-          grep -q '^P:plasma-workspace$' app/src/main/assets/alpine-kde-package-check.txt
-          grep -q '^P:kwin$' app/src/main/assets/alpine-kde-package-check.txt
-          grep -q '^P:gcompat$' app/src/main/assets/alpine-kde-package-check.txt
-          tar -tJf app/src/main/assets/alpine-rootfs-aarch64.tar.xz | grep -q './usr/bin/startplasma-wayland'
-          test -s app/src/main/assets/ALPINE-LICENSES.txt
+          test -s \.work/alpine-assets/alpine-rootfs-aarch64.tar.xz
+          sha256sum -c \.work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
+          grep -q '^KDE_DESKTOP=installed$' \.work/alpine-assets/rootfs-build-info.txt
+          grep -q '^P:plasma-desktop$' \.work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:plasma-workspace$' \.work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:kwin$' \.work/alpine-assets/alpine-kde-package-check.txt
+          grep -q '^P:gcompat$' \.work/alpine-assets/alpine-kde-package-check.txt
+          tar -tJf \.work/alpine-assets/alpine-rootfs-aarch64.tar.xz | grep -q './usr/bin/startplasma-wayland'
+          test -s \.work/alpine-assets/ALPINE-LICENSES.txt
 
       - name: Install native build dependencies
         run: |
