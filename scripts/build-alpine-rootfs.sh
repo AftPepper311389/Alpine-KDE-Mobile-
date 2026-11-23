@@ -15,10 +15,10 @@ apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   fcitx5 fcitx5-gtk fcitx5-qt fcitx5-chinese-addons \
   mesa-dri-gallium mesa-egl mesa-gl mesa-gles gcompat \
   font-noto font-noto-cjk ttf-dejavu breeze breeze-icons \
-  fastfetch git curl wget python3 py3-pip build-base cmake \
-  nodejs npm openjdk17-jdk rust cargo go \
+  fastfetch git curl wget python3 py3-pip \
   tzdata ca-certificates shared-mime-info procps coreutils util-linux
 
+rm -rf "$ROOTFS/var/cache/apk/"* "$ROOTFS/root/.cache/"* "$ROOTFS/tmp/"* 2>/dev/null || true
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
 printf '%s\n' 'nameserver 1.1.1.1' 'nameserver 8.8.8.8' > "$ROOTFS/etc/resolv.conf"
 printf '%s\n' 'alpine-kde' > "$ROOTFS/etc/hostname"
