@@ -26,8 +26,15 @@ cat > "$WORK/testapp/src/main/assets/WLDROID-SOURCE-NOTICE.txt" <<EOF
 WLDroid Android Wayland/PRoot/VirGL integration
 Repository: https://github.com/Shelnutt2/wldroid
 Pinned commit: $WLDROID_COMMIT
-License: see WLDROID-LICENSE.txt and THIRD-PARTY-NOTICES.txt
+License: MIT; see WLDROID-LICENSE.txt and THIRD-PARTY-NOTICES.txt
 The APK includes WLDroid's Android compositor, PRoot runtime, VirGL server, and Linux compatibility shims.
+PRoot is GPL-2.0; its corresponding COPYING file is included under assets/licenses.
+EOF
+cat > "$WORK/testapp/src/main/assets/THIRD-PARTY-LICENSE-INDEX.txt" <<'EOF'
+Alpine packages and their license identifiers are listed in ALPINE-LICENSES.txt.
+WLDroid license: WLDROID-LICENSE.txt.
+Third-party source license texts are in assets/licenses/.
+The embedded rootfs also retains any upstream license files installed under /usr/share/licenses.
 EOF
 
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
@@ -38,6 +45,17 @@ export NDK_HOME="$ANDROID_NDK_HOME"
 test -d "$ANDROID_NDK_HOME"
 
 cd "$WORK"
+./gradlew --no-daemon --stacktrace -PoverrideVersion=1.0.0 :testapp:assembleDebug
+
+LICENSE_DIR="$WORK/testapp/src/main/assets/licenses"
+mkdir -p "$LICENSE_DIR"
+cp "$WORK/external/proot/COPYING" "$LICENSE_DIR/PRoot-COPYING.txt"
+cp "$WORK/external/wlroots/LICENSE" "$LICENSE_DIR/wlroots-LICENSE.txt"
+cp "$WORK/external/virglrenderer/COPYING" "$LICENSE_DIR/virglrenderer-COPYING.txt"
+cp "$WORK/external/talloc/COPYING" "$LICENSE_DIR/talloc-COPYING.txt"
+cp "$WORK/virgl/native/build/libepoxy-src/COPYING" "$LICENSE_DIR/libepoxy-COPYING.txt"
+cp "$WORK/compositor/native/subprojects/wayland-1.24.0/COPYING" "$LICENSE_DIR/wayland-COPYING.txt"
+
 ./gradlew --no-daemon --stacktrace -PoverrideVersion=1.0.0 :testapp:assembleDebug
 
 APK="$(find "$WORK/testapp/build/outputs/apk/debug" -maxdepth 1 -type f -name '*.apk' -print -quit)"
