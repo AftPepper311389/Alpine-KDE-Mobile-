@@ -392,7 +392,7 @@ g = p.read_text()
 # Upstream forces ARM64 AAPT2 for an on-device build. APK compilation runs on
 # x86_64 CI, so use the Android Gradle Plugin's native host AAPT2 instead.
 start = g.find("// Force use of ARM64 binaries for AAPT2 in Proot environment")
-end = g.find("\\n}\\n", start) if start >= 0 else -1
+end = g.find(chr(10) + "}" + chr(10), start) if start >= 0 else -1
 if start < 0 or end < 0:
     raise SystemExit("Could not locate upstream ARM64-only AAPT2 override")
 g = g[:start] + g[end + 3:]
