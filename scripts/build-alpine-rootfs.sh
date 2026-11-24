@@ -18,15 +18,19 @@ apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   fastfetch git curl wget python3 py3-pip \
   tzdata ca-certificates shared-mime-info procps coreutils util-linux
 
-# Use Alpine's real util-linux su binary, not a fabricated file or a BusyBox symlink.
-# util-linux-login supplies /bin/su and its PAM/runtime dependencies.
+# Alpine's util-linux-login package installs the real executable at /bin/su.
+# Linuxhub 1.2.0 also invokes /usr/bin/su. Keep a real copied executable at
+# both paths: do not rely on an absolute symlink surviving rootfs packaging.
 test -x "$ROOTFS/bin/su"
 test ! -L "$ROOTFS/bin/su"
 apk --root "$ROOTFS" info -W /bin/su | grep -q "util-linux-login"
 mkdir -p "$ROOTFS/usr/bin"
-ln -sfn /bin/su "$ROOTFS/usr/bin/su"
+install -m 0755 "$ROOTFS/bin/su" "$ROOTFS/usr/bin/su"
+test -f "$ROOTFS/usr/bin/su"
 test -x "$ROOTFS/usr/bin/su"
-chroot "$ROOTFS" /bin/su --version
+test ! -L "$ROOTFS/usr/bin/su"
+cmp -s "$ROOTFS/bin/su" "$ROOTFS/usr/bin/su"
+chroot "$ROOTFS" /usr/bin/su --version
 
 rm -rf "$ROOTFS/var/cache/apk/"* "$ROOTFS/root/.cache/"* "$ROOTFS/tmp/"* 2>/dev/null || true
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
