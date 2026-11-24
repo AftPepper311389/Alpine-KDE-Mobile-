@@ -166,7 +166,7 @@ def patch_manager(s):
 ''' + s[b:]
 
     # No glibc-only preload bridge in the musl-based Alpine rootfs.
-    s = s.replace('        ensureGetifaddrsBridge()\\n', '')
+    s = s.replace('        ensureGetifaddrsBridge()\n', '')
     a = s.index('    private fun installRuntime()')
     b = s.index('    private fun ensureGetifaddrsBridge()', a)
     s = s[:a] + '''    private fun installRuntime() {
@@ -253,8 +253,8 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt",
 # Keep the X11 service's XKB lookup aligned with the migrated Alpine rootfs.
 def patch_x11_service(s):
     s = once(s,
-        'import android.util.Log\\n',
-        'import android.util.Log\\nimport com.doro.terminal.shell.linux.ContainerPaths\\n',
+        'import android.util.Log\n',
+        'import android.util.Log\nimport com.doro.terminal.shell.linux.ContainerPaths\n',
         'X11 service ContainerPaths import')
     return once(s,
         'File(filesDir, "linux/distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb")',
@@ -524,8 +524,8 @@ if 'noCompress += listOf("tar")' in g:
 elif 'noCompress += listOf("tar", "gz")' not in g:
     raise SystemExit("Could not locate Android rootfs noCompress configuration")
 if "versionCode = 69" in g:
-    g = g.replace("versionCode = 69", "versionCode = 123", 1)
-elif "versionCode = 123" not in g:
+    g = g.replace("versionCode = 69", "versionCode = 124", 1)
+elif "versionCode = 124" not in g:
     raise SystemExit("Unexpected upstream versionCode")
 if 'versionName = "1.1.9Debug"' in g:
     g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
