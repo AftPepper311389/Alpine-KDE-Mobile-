@@ -122,6 +122,11 @@ jobs:
           grep -Fq 'AlpineKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
           grep -Fq 'ContainerPaths(this@X11ServerService).rootfsDir' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'alpine-3.21-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-alpine-rootfs.sh
+          test -f linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Fq 'ubuntu-24.04/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Fq 'XKB_ASSET' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-alpine-rootfs.sh
