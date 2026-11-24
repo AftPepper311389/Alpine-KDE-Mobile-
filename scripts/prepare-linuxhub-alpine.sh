@@ -389,9 +389,50 @@ for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
 # The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
 p = src / "app/build.gradle.kts"
 g = p.read_text()
-g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")')
-g = g.replace('versionCode = 69', 'versionCode = 120')
-g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"')
+# The upstream app forces ARM64 AAPT2 for an on-device/PRoot build. CI compiles
+# the APK on x86_64, so retain the host AAPT2 selected by Android Gradle Plugin.
+aapt2_override = """// Force use of ARM64 binaries for AAPT2 in Proot environment
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "com.android.tools.build" && requested.name == "aapt2") {
+            useTarget("com.android.tools.build:aapt2:${'
+PY
+
+
+# The upstream tag contains a developer-local Gradle distribution URL.
+# Replace it with the official Gradle 9.1.0 distribution for CI builds.
+python3 - "$SRC/gradle/wrapper/gradle-wrapper.properties" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = "distributionUrl=file:///root/gradle/gradle-9.1.0-bin.zip"
+new = "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
+if old not in s and new not in s:
+    raise SystemExit("Unexpected Gradle wrapper distribution URL")
+p.write_text(s.replace(old, new))
+PY
+grep -Fq 'distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip' "$SRC/gradle/wrapper/gradle-wrapper.properties"
+}{requested.version}:linux-aarch64")
+        }
+    }
+}
+"""
+if aapt2_override not in g:
+    raise SystemExit("Could not locate upstream ARM64-only AAPT2 override")
+g = g.replace(aapt2_override, "", 1)
+if 'noCompress += listOf("tar")' in g:
+    g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")', 1)
+elif 'noCompress += listOf("tar", "gz")' not in g:
+    raise SystemExit("Could not locate Android rootfs noCompress configuration")
+if "versionCode = 69" in g:
+    g = g.replace("versionCode = 69", "versionCode = 120", 1)
+elif "versionCode = 120" not in g:
+    raise SystemExit("Unexpected upstream versionCode")
+if 'versionName = "1.1.9Debug"' in g:
+    g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
+elif 'versionName = "1.2.0-Alpine-KDE"' not in g:
+    raise SystemExit("Unexpected upstream versionName")
 p.write_text(g)
 PY
 
