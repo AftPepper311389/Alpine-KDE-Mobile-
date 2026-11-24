@@ -42,13 +42,13 @@ def patch_models(s):
     s = s.replace('ContainerConfig(\n                distribution = values.getProperty("distribution", "ubuntu"),\n                version = values.getProperty("version", "24.04"),',
                   'ContainerConfig(\n                distribution = values.getProperty("distribution", "alpine"),\n                version = values.getProperty("version", "3.21"),')
     s = s.replace('UBUNTU("Ubuntu 24.04", "基础组件", required = true, defaultSelected = true)',
-                  'UBUNTU("Alpine Linux 3.21 ARM64", "基础组件", required = true, defaultSelected = true)')
+                  'ALPINE("Alpine Linux 3.21 ARM64", "基础组件", required = true, defaultSelected = true)')
     s = s.replace('APT("APT", "基础组件", required = true, defaultSelected = true)',
-                  'APT("APK", "基础组件", required = true, defaultSelected = true)')
+                  'APK("APK", "基础组件", required = true, defaultSelected = true)')
     s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
                   'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
     s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
-                  'XFCE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace-x11", "kwin"))')
+                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace-x11", "kwin"))')
     s = s.replace('X11("X11", "内置组件", packages = listOf("dbus-x11", "x11-xserver-utils", "xterm"))',
                   'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus-x11"))')
     s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
@@ -77,6 +77,14 @@ def patch_models(s):
                   'GO("Go", "开发环境", supported = false)')
     return s
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch_models)
+edit("app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt",
+     lambda s: s.replace("InstallComponent.UBUNTU", "InstallComponent.ALPINE")
+                 .replace("InstallComponent.APT", "InstallComponent.APK")
+                 .replace("InstallComponent.XFCE", "InstallComponent.KDE"))
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
+     lambda s: s.replace('    val xfceGpuRecoveryMarker = File(rootfsDir, ".doro-xfce-gpu-recovery-v1")\n', ''))
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxProcessSession.kt",
+     lambda s: s.replace("ubuntu-pty-", "alpine-pty-"))
 
 # Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Alpine archive.
 def patch_manager(s):
@@ -226,6 +234,18 @@ def patch_manager(s):
         'exec /usr/bin/su - ${shell(config.username)} -c ${shell(script)}',
         'exec su - ${shell(config.username)} -c ${shell(script)}',
         "Alpine KDE session su path")
+
+    # Remove unused Ubuntu/XFCE and Debian package-management code paths.
+    def remove_between(text, begin, end, label):
+        if begin not in text or end not in text:
+            raise SystemExit(f"Could not locate obsolete block: {label}")
+        a = text.index(begin)
+        b = text.index(end, a)
+        return text[:a] + text[b:]
+    s = remove_between(s, '    private fun ensureTunaAptMirror()', '    private fun ensureFetchScript()', "Ubuntu APT helpers")
+    s = remove_between(s, '    private fun ensureDesktopWallpaper()', '    fun stopDesktopServices()', "XFCE desktop customizations")
+    s = remove_between(s, '    private fun ensureGetifaddrsBridge()', '    private fun copyAsset(', "unused Ubuntu getifaddrs bridge")
+    s = remove_between(s, '    private fun installMesaGpuRuntime()', '    private fun createContainerProgress(', "offline Debian and GPU installer")
     return s
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
@@ -261,6 +281,20 @@ def patch_desktop(s):
 '''
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
+# The KDE session no longer uses the upstream XFCE wallpaper helper.
+def remove_xfce_wallpaper(s):
+    a = s.index("    fun wallpaperScript()")
+    b = s.index("    fun sessionScript(", a)
+    return s[:a] + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", remove_xfce_wallpaper)
+
+# Remove Debian-only repair script sources; the Alpine image is fully provisioned during CI.
+for rel in [
+    "app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt",
+]:
+    (src / rel).unlink(missing_ok=True)
 
 # Update the X11 page's diagnostics and boot splash to reflect the KDE session.
 def patch_x11_screen(s):
