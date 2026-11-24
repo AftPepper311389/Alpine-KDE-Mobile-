@@ -8,7 +8,7 @@ printf '%s\n' "$APK_REPO/main" "$APK_REPO/community" > "$ROOTFS/etc/apk/reposito
 
 apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   --repositories-file "$ROOTFS/etc/apk/repositories" add --no-cache \
-  alpine-base bash shadow sudo dbus dbus-x11 polkit elogind xkeyboard-config \
+  alpine-base bash shadow sudo dbus dbus-x11 polkit elogind xkeyboard-config xkbcomp \
   plasma-desktop plasma-workspace plasma-workspace-x11 kwin \
   dolphin konsole kate systemsettings plasma-nm plasma-pa \
   pulseaudio xwayland xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk \
@@ -51,11 +51,12 @@ ln -snf /usr/share/zoneinfo/Asia/Shanghai "$ROOTFS/etc/localtime"
 mkdir -p "$ROOTFS/usr/share/xsessions"
 test -x "$ROOTFS/usr/bin/startplasma-x11"
 test -x "$ROOTFS/usr/bin/kwin_x11"
-test -x "$ROOTFS/usr/bin/dbus-run-session" || test -x "$ROOTFS/usr/bin/dbus-launch"
+test -x "$ROOTFS/usr/bin/dbus-run-session"
 test -x "$ROOTFS/usr/bin/dolphin"
 test -x "$ROOTFS/usr/bin/konsole"
 test -d "$ROOTFS/usr/share/X11/xkb"
 test -f "$ROOTFS/usr/share/X11/xkb/rules/evdev"
 test -f "$ROOTFS/usr/share/X11/xkb/symbols/us"
+test -x "$ROOTFS/usr/bin/xkbcomp"
 printf '%s\n' 'ROOTFS=Alpine 3.21 aarch64' 'DESKTOP=KDE Plasma 6 X11' 'DISPLAY_BACKEND=Lorie X11' \
   > "$ROOTFS/etc/alpine-kde-mobile-build-info"
