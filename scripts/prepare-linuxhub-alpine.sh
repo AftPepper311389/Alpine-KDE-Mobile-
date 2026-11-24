@@ -221,15 +221,15 @@ def patch_manager(s):
             "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
 
 ''' + s[b:]
-    # Alpine provides su in /bin (from shadow/BusyBox), not necessarily /usr/bin.
-    # Resolve it through PATH for both terminal login and KDE session launch.
+    # Alpine's util-linux-login package provides the real /bin/su executable.
+    # Invoke it explicitly; /usr/bin/su is only a compatibility symlink.
     s = once(s,
         'exec /usr/bin/su - ${shell(config.username)}',
-        'exec su - ${shell(config.username)}',
+        'exec /bin/su - ${shell(config.username)}',
         "Alpine terminal login su path")
     s = once(s,
         'exec /usr/bin/su - ${shell(config.username)} -c ${shell(script)}',
-        'exec su - ${shell(config.username)} -c ${shell(script)}',
+        'exec /bin/su - ${shell(config.username)} -c ${shell(script)}',
         "Alpine KDE session su path")
 
     # Remove unused Ubuntu/XFCE and Debian package-management code paths.
