@@ -186,7 +186,7 @@ def patch_manager(s):
             "printf '%s\\n' 'Asia/Shanghai' > /etc/timezone && " +
             "touch /home/${shell(username)}/.bashrc && " +
             "grep -qF 'export PS1=' /home/${shell(username)}/.bashrc || " +
-            "printf '%s\\n' 'export PS1="\\\\[\\\\033[01;32m\\\\]\\\\u@\\\\h\\\\[\\\\033[00m\\\\]:\\\\[\\\\033[01;34m\\\\]\\\\w\\\\[\\\\033[00m\\\\]\\\\$ "' >> /home/${shell(username)}/.bashrc; " +
+            "printf '%s\\n' 'export PS1=\\\\u@\\\\h:\\\\w# ' >> /home/${shell(username)}/.bashrc; " +
             "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
 
 ''' + s[b:]
