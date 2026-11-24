@@ -389,38 +389,17 @@ for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
 # The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
 p = src / "app/build.gradle.kts"
 g = p.read_text()
-# The upstream app forces ARM64 AAPT2 for an on-device/PRoot build. CI compiles
-# the APK on x86_64, so retain the host AAPT2 selected by Android Gradle Plugin.
-aapt2_override = """// Force use of ARM64 binaries for AAPT2 in Proot environment
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "com.android.tools.build" && requested.name == "aapt2") {
-            useTarget("com.android.tools.build:aapt2:${'
-PY
-
-
-# The upstream tag contains a developer-local Gradle distribution URL.
-# Replace it with the official Gradle 9.1.0 distribution for CI builds.
-python3 - "$SRC/gradle/wrapper/gradle-wrapper.properties" <<'PY'
-from pathlib import Path
-import sys
-p = Path(sys.argv[1])
-s = p.read_text()
-old = "distributionUrl=file:///root/gradle/gradle-9.1.0-bin.zip"
-new = "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
-if old not in s and new not in s:
-    raise SystemExit("Unexpected Gradle wrapper distribution URL")
-p.write_text(s.replace(old, new))
-PY
-grep -Fq 'distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip' "$SRC/gradle/wrapper/gradle-wrapper.properties"
-}{requested.version}:linux-aarch64")
-        }
-    }
-}
-"""
-if aapt2_override not in g:
-    raise SystemExit("Could not locate upstream ARM64-only AAPT2 override")
-g = g.replace(aapt2_override, "", 1)
+# Upstream forces ARM64 AAPT2 for an on-device build. APK compilation runs on
+# x86_64 CI, so use the Android Gradle Plugin's native host AAPT2 instead.
+g, removed = re.subn(
+    r'\n// Force use of ARM64 binaries for AAPT2 in Proot environment\nconfigurations\\.all \\{\n.*?^\\}\n',
+    '\n',
+    g,
+    count=1,
+    flags=re.S | re.M
+)
+if removed != 1 or "linux-aarch64" in g:
+    raise SystemExit("Could not safely remove upstream ARM64-only AAPT2 override")
 if 'noCompress += listOf("tar")' in g:
     g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")', 1)
 elif 'noCompress += listOf("tar", "gz")' not in g:
