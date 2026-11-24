@@ -232,4 +232,18 @@ g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"')
 p.write_text(g)
 PY
 
-# Keep the complete upstream 1.2.0 source tree as the actual Android application base.
+
+# The upstream tag contains a developer-local Gradle distribution URL.
+# Replace it with the official Gradle 9.1.0 distribution for CI builds.
+python3 - "$SRC/gradle/wrapper/gradle-wrapper.properties" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = "distributionUrl=file:///root/gradle/gradle-9.1.0-bin.zip"
+new = "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
+if old not in s and new not in s:
+    raise SystemExit("Unexpected Gradle wrapper distribution URL")
+p.write_text(s.replace(old, new))
+PY
+grep -q '^distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip "$SRC/gradle/wrapper/gradle-wrapper.properties"
