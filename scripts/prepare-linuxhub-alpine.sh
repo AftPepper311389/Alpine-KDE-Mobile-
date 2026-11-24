@@ -114,6 +114,15 @@ def patch_manager(s):
 ''')
     s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
     s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
+    s = s.replace('''                    val x11Share = File(paths.rootfsDir, "usr/share/X11")
+                    verifyAsset(XKB_ASSET, XKB_SHA256)
+                    context.assets.open(XKB_ASSET).use { TarGzExtractor.extract(it, x11Share) }
+''', '''                    check(File(paths.rootfsDir, "usr/share/X11/xkb/rules/evdev").isFile) {
+                        "Alpine xkeyboard-config package is missing"
+                    }
+''')
+    s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
+    s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
     s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Alpine 已完成初始化" }')
 
     # Do not install Ubuntu-only Debian packages during first boot.
