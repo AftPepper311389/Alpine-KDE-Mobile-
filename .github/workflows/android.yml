@@ -150,16 +150,36 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-files.txt"
-          grep -q '^assets/rootfs/alpine-rootfs-aarch64.tar.gz$' "$RUNNER_TEMP/apk-files.txt"
-          grep -q '^lib/arm64-v8a/libproot.so$' "$RUNNER_TEMP/apk-files.txt"
-          grep -q '^lib/arm64-v8a/libproot-loader.so$' "$RUNNER_TEMP/apk-files.txt"
-          grep -q '^lib/arm64-v8a/libXlorie.so$' "$RUNNER_TEMP/apk-files.txt"
-          grep -q '^assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256$' "$RUNNER_TEMP/apk-files.txt"
+          echo "APK entry diagnostics:"
+          grep -E '(^assets/|^lib/arm64-v8a/|alpine-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
+          for entry in \
+            assets/rootfs/alpine-rootfs-aarch64.tar.gz \
+            lib/arm64-v8a/libproot.so \
+            lib/arm64-v8a/libproot-loader.so \
+            lib/arm64-v8a/libXlorie.so \
+            assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256; do
+            if ! grep -Fxq "$entry" "$RUNNER_TEMP/apk-files.txt"; then
+              echo "::error::Missing APK entry: $entry"
+              exit 1
+            fi
+          done
           EXPECTED=$(cat app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256)
           ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
+          echo "Expected rootfs SHA256: $EXPECTED"
+          echo "Actual rootfs SHA256:   $ACTUAL"
           test "$EXPECTED" = "$ACTUAL"
           sha256sum "$APK"
           ls -lh "$APK"
+
+      - name: Upload APK diagnostic even when verification fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linuxhub-1.2.0-Alpine-KDE-APK-diagnostic
+          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 3
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
