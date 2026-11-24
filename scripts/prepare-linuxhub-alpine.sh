@@ -212,6 +212,18 @@ def patch_manager(s):
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
 
+# Keep the X11 service's XKB lookup aligned with the migrated Alpine rootfs.
+def patch_x11_service(s):
+    s = once(s,
+        'import android.util.Log\\n',
+        'import android.util.Log\\nimport com.doro.terminal.shell.linux.ContainerPaths\\n',
+        'X11 service ContainerPaths import')
+    return once(s,
+        'File(filesDir, "linux/distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb")',
+        'File(ContainerPaths(this@X11ServerService).rootfsDir, "usr/share/X11/xkb")',
+        'X11 service XKB rootfs path')
+edit("app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt", patch_x11_service)
+
 # Switch the existing Lorie X11 session launcher from XFCE to KDE Plasma X11.
 def patch_desktop(s):
     a = s.index('    fun sessionScript(')
@@ -431,8 +443,8 @@ if 'noCompress += listOf("tar")' in g:
 elif 'noCompress += listOf("tar", "gz")' not in g:
     raise SystemExit("Could not locate Android rootfs noCompress configuration")
 if "versionCode = 69" in g:
-    g = g.replace("versionCode = 69", "versionCode = 121", 1)
-elif "versionCode = 121" not in g:
+    g = g.replace("versionCode = 69", "versionCode = 122", 1)
+elif "versionCode = 122" not in g:
     raise SystemExit("Unexpected upstream versionCode")
 if 'versionName = "1.1.9Debug"' in g:
     g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
