@@ -431,8 +431,8 @@ if 'noCompress += listOf("tar")' in g:
 elif 'noCompress += listOf("tar", "gz")' not in g:
     raise SystemExit("Could not locate Android rootfs noCompress configuration")
 if "versionCode = 69" in g:
-    g = g.replace("versionCode = 69", "versionCode = 120", 1)
-elif "versionCode = 120" not in g:
+    g = g.replace("versionCode = 69", "versionCode = 121", 1)
+elif "versionCode = 121" not in g:
     raise SystemExit("Unexpected upstream versionCode")
 if 'versionName = "1.1.9Debug"' in g:
     g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
