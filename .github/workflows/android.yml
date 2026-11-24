@@ -88,6 +88,30 @@ jobs:
             linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
           test -s linuxhub-1.2.0/app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz
 
+      - name: Audit generated source and native build configuration
+        run: |
+          set -eu
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          script = Path("scripts/prepare-linuxhub-alpine.sh").read_text()
+          match = re.search(r'python3 - "\\$SRC".*?<<\'PY\'\\n(.*?)\\nPY\\n', script, re.S)
+          if not match:
+              raise SystemExit("Migration Python block was not found")
+          compile(match.group(1), "prepare-linuxhub-alpine.py", "exec")
+          print("Migration generator syntax: OK")
+          PY
+          LORIE=linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp
+          test -s "$LORIE/xorgproto/include/X11/Xfuncproto.h"
+          grep -q '#define _X_HIDDEN' "$LORIE/xorgproto/include/X11/Xfuncproto.h"
+          grep -q 'execute_process(' "$LORIE/recipes/xkbcomp.cmake"
+          ! grep -q '"&&"' "$LORIE/recipes/xkbcomp.cmake"
+          grep -q 'target_compile_options(Xau PRIVATE' "$LORIE/recipes/Xau.cmake"
+          ! grep -q 'linux-aarch64' linuxhub-1.2.0/app/build.gradle.kts
+          grep -q 'noCompress += listOf("tar", "gz")' linuxhub-1.2.0/app/build.gradle.kts
+          grep -q 'startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          echo "Generated Kotlin/CMake/Gradle migration audit: OK"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
