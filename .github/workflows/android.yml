@@ -36,7 +36,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             alpine:3.21 sh scripts/build-alpine-rootfs.sh
-          sudo tar --numeric-owner -I 'gzip -1' -cf .work/alpine-rootfs-aarch64.tar.gz \
+          sudo tar --format=ustar --numeric-owner -I 'gzip -1' -cf .work/alpine-rootfs-aarch64.tar.gz \
             -C .work/alpine-rootfs .
           sha256sum .work/alpine-rootfs-aarch64.tar.gz
           sudo du -sh .work/alpine-rootfs .work/alpine-rootfs-aarch64.tar.gz
