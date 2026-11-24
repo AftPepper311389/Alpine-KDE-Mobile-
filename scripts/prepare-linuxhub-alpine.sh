@@ -309,6 +309,11 @@ for rel in [
     "app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt",
     "app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt",
     "app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt",
+    # These upstream Lorie tests reference state classes absent from the pinned 1.2.0 sources.
+    # Keep the actual Lorie input implementation and remove only the orphaned test fixtures.
+    "app/src/test/java/com/termux/x11/input/PointerGestureStateTest.java",
+    "app/src/test/java/com/termux/x11/input/MouseButtonStateTest.java",
+    "app/src/test/java/com/termux/x11/input/CompositionStateTest.java",
 ]:
     (src / rel).unlink(missing_ok=True)
 
