@@ -144,6 +144,10 @@ jobs:
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt
+          grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt
           ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'alpine-3.21-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
