@@ -366,8 +366,8 @@ edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xorgpro
 # Correct a copied target name in the upstream Xau recipe.
 def patch_xau(s):
     return once(s,
-        'target_compile_options(Xdmcp PRIVATE \${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
-        'target_compile_options(Xau PRIVATE \${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        'target_compile_options(Xdmcp PRIVATE ${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        'target_compile_options(Xau PRIVATE ${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
         "Xau compile options target")
 edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cmake", patch_xau)
 
