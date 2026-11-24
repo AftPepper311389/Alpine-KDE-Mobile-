@@ -355,6 +355,14 @@ endif()"""
     return once(s, old, new, "xkbcomp host makekeys rule")
 edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xkbcomp.cmake", patch_xkbcomp)
 
+# Expose generated X11 headers and the Xtrans symlink from the CMake build tree.
+def patch_xorgproto(s):
+    return once(s,
+        'target_include_directories(xorgproto INTERFACE "xorgproto/include")',
+        'target_include_directories(xorgproto INTERFACE "xorgproto/include" "${CMAKE_CURRENT_BINARY_DIR}")',
+        "xorgproto generated include directory")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xorgproto.cmake", patch_xorgproto)
+
 # Correct a copied target name in the upstream Xau recipe.
 def patch_xau(s):
     return once(s,
