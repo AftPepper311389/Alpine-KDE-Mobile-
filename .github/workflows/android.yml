@@ -72,10 +72,26 @@ jobs:
 
       - name: Fetch official Linuxhub 1.2.0 source
         run: |
-          git clone --depth 1 --branch 1.2.0 --recurse-submodules \
-            https://github.com/xishanp/Linuxhub.git linuxhub-1.2.0
-          test -f linuxhub-1.2.0/gradlew
-          test -f linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          UPSTREAM_COMMIT=dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c
+          git init linuxhub-1.2.0
+          git -C linuxhub-1.2.0 remote add origin https://github.com/xishanp/Linuxhub.git
+          git -C linuxhub-1.2.0 fetch --depth 1 origin "$UPSTREAM_COMMIT"
+          git -C linuxhub-1.2.0 checkout --detach FETCH_HEAD
+          git -C linuxhub-1.2.0 submodule update --init --recursive
+          test "$(git -C linuxhub-1.2.0 rev-parse HEAD)" = "$UPSTREAM_COMMIT"
+          if git -C linuxhub-1.2.0 submodule status --recursive | grep -Eq "^[+-U]"; then
+            echo "::error::Linuxhub source submodule checkout is incomplete"
+            exit 1
+          fi
+          test -s linuxhub-1.2.0/gradlew
+          test -s linuxhub-1.2.0/gradle/wrapper/gradle-wrapper.jar
+          test -s linuxhub-1.2.0/app/src/main/AndroidManifest.xml
+          test -s linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          test -s linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          test -s linuxhub-1.2.0/app/src/main/jniLibs/arm64-v8a/libproot.so
+          test -s linuxhub-1.2.0/app/src/main/jniLibs/arm64-v8a/libXlorie.so
+          test -s linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/CMakeLists.txt
+          echo "Complete upstream source checkout verified: $UPSTREAM_COMMIT"
 
       - name: Replace Ubuntu runtime with embedded Alpine KDE
         run: |
@@ -116,7 +132,7 @@ jobs:
           ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           ! grep -Fq 'exec /usr/bin/su' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
-          grep -Fq 'exec su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'exec /bin/su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'AlpineKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
