@@ -222,6 +222,19 @@ def patch_desktop(s):
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
 
+# Android's bionic libc does not expose explicit_bzero in the NDK headers.
+# Keep Xauthority credential wiping explicit and optimization-resistant.
+def patch_xau_secure_wipe(s):
+    if "static void xau_secure_clear" not in s:
+        s = once(s,
+            "#include <stdlib.h>\\n",
+            "#include <stdlib.h>\\n\\nstatic void xau_secure_clear(void *buffer, size_t length) {\\n    volatile unsigned char *p = (volatile unsigned char *) buffer;\\n    while (length-- > 0) *p++ = 0;\\n}\\n",
+            "Xau secure-clear helper")
+    s = s.replace("explicit_bzero (", "xau_secure_clear (")
+    return s
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/libxau/AuDispose.c", patch_xau_secure_wipe)
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/libxau/AuRead.c", patch_xau_secure_wipe)
+
 # Repair the upstream Lorie native build's missing Xfuncproto header.
 xfuncproto = r"""#ifndef _XFUNCPROTO_H_
 #define _XFUNCPROTO_H_
