@@ -99,7 +99,7 @@ def patch_manager(s):
     s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
     s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
     s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
-                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar.gz"')
+                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar"')
     s = s.replace('private const val ROOTFS_SHA256 = "0ce61ffe898bab0d0b35231c3daf1751d95c34a1963b507549c9d7dc97543e48"',
                   f'private const val ROOTFS_SHA256 = "{sha}"')
     s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
