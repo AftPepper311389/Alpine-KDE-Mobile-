@@ -249,6 +249,8 @@ def patch_manager(s):
     a = s.index('        private const val OFFLINE_CORE_ASSET')
     b = s.index('        private const val COMMAND_TIMEOUT_MS', a)
     s = s[:a] + s[b:]
+    s = s.replace('        private const val COMMAND_TIMEOUT_MS',
+                  '        private const val FETCH_SCRIPT_ASSET = "desktop/doro-fetch.sh"\\n        private const val COMMAND_TIMEOUT_MS', 1)
     return s
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
