@@ -88,6 +88,14 @@ def patch_manager(s):
     s = s.replace('version = values.getProperty("version", "3.21")', 'version = "3.21"')
     s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
                   'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11")')
+    s = once(s,
+        'var state = loadInitializationState()?.takeIf { it.username == username }',
+        'var state = loadInitializationState()?.takeIf { it.username == username && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11") }',
+        "discard stale Ubuntu initialization progress")
+    s = once(s,
+        'if (!paths.rootfsReadyMarker.isFile) {',
+        'if (!paths.rootfsReadyMarker.isFile || !paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11")) {',
+        "re-extract mismatched rootfs marker")
     s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
     s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
     s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
@@ -373,6 +381,10 @@ edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cma
 
 # Correct Kotlin escape depth in the generated Alpine hostname and hosts files.
 def patch_manager_runtime_strings(s):
+    s = once(s,
+        'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\\\n")',
+        'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\n")',
+        "rootfs marker newline")
     s = once(s,
         'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\\\\\n")',
         'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\n")',
