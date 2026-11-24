@@ -198,6 +198,16 @@ def patch_manager(s):
             "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
 
 ''' + s[b:]
+    # Alpine provides su in /bin (from shadow/BusyBox), not necessarily /usr/bin.
+    # Resolve it through PATH for both terminal login and KDE session launch.
+    s = once(s,
+        'exec /usr/bin/su - ${shell(config.username)}',
+        'exec su - ${shell(config.username)}',
+        "Alpine terminal login su path")
+    s = once(s,
+        'exec /usr/bin/su - ${shell(config.username)} -c ${shell(script)}',
+        'exec su - ${shell(config.username)} -c ${shell(script)}',
+        "Alpine KDE session su path")
     return s
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
