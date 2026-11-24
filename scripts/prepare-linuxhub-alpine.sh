@@ -246,6 +246,13 @@ def patch_manager(s):
     s = remove_between(s, '    private fun ensureDesktopWallpaper()', '    fun stopDesktopServices()', "XFCE desktop customizations")
     s = remove_between(s, '    private fun ensureGetifaddrsBridge()', '    private fun copyAsset(', "unused Ubuntu getifaddrs bridge")
     s = remove_between(s, '    private fun installMesaGpuRuntime()', '    private fun createContainerProgress(', "offline Debian and GPU installer")
+    s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
+    a = s.index('        private val bridgeLock = Any()')
+    b = s.index('        private const val ROOTFS_ASSET', a)
+    s = s[:a] + s[b:]
+    a = s.index('        private const val OFFLINE_CORE_ASSET')
+    b = s.index('        private const val COMMAND_TIMEOUT_MS', a)
+    s = s[:a] + s[b:]
     return s
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
