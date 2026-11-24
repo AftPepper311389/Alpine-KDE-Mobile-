@@ -214,6 +214,168 @@ def patch_desktop(s):
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
 
+# Repair the upstream Lorie native build's missing Xfuncproto header.
+xfuncproto = r"""#ifndef _XFUNCPROTO_H_
+#define _XFUNCPROTO_H_
+#ifndef NeedFunctionPrototypes
+#define NeedFunctionPrototypes 1
+#endif
+#ifndef NeedVarargsPrototypes
+#define NeedVarargsPrototypes 1
+#endif
+#ifndef NeedNestedPrototypes
+#define NeedNestedPrototypes 1
+#endif
+#ifndef _Xconst
+#define _Xconst const
+#endif
+#ifndef FUNCPROTO
+#define FUNCPROTO 15
+#endif
+#ifndef NeedWidePrototypes
+#if defined(__linux__) || defined(__ANDROID__)
+#define NeedWidePrototypes 0
+#else
+#define NeedWidePrototypes 1
+#endif
+#endif
+#ifndef _XFUNCPROTOBEGIN
+#ifdef __cplusplus
+#define _XFUNCPROTOBEGIN extern "C" {
+#define _XFUNCPROTOEND }
+#else
+#define _XFUNCPROTOBEGIN
+#define _XFUNCPROTOEND
+#endif
+#endif
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#ifndef __has_extension
+#define __has_extension(x) 0
+#endif
+#if __has_attribute(__sentinel__) || (defined(__GNUC__) && __GNUC__ >= 4)
+#define _X_SENTINEL(x) __attribute__((__sentinel__(x)))
+#else
+#define _X_SENTINEL(x)
+#endif
+#if __has_attribute(visibility) || (defined(__GNUC__) && __GNUC__ >= 4)
+#define _X_EXPORT __attribute__((visibility("default")))
+#define _X_HIDDEN __attribute__((visibility("hidden")))
+#define _X_INTERNAL __attribute__((visibility("internal")))
+#else
+#define _X_EXPORT
+#define _X_HIDDEN
+#define _X_INTERNAL
+#endif
+#if defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 303)
+#define _X_LIKELY(x) __builtin_expect(!!(x), 1)
+#define _X_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define _X_LIKELY(x) (x)
+#define _X_UNLIKELY(x) (x)
+#endif
+#if __has_attribute(__cold__) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 403))
+#define _X_COLD __attribute__((__cold__))
+#else
+#define _X_COLD
+#endif
+#if __has_attribute(deprecated) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 301))
+#define _X_DEPRECATED __attribute__((deprecated))
+#else
+#define _X_DEPRECATED
+#endif
+#if __has_attribute(noreturn) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 205))
+#define _X_NORETURN __attribute__((noreturn))
+#else
+#define _X_NORETURN
+#endif
+#if __has_attribute(__format__) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 203))
+#define _X_ATTRIBUTE_PRINTF(x,y) __attribute__((__format__(__printf__,x,y)))
+#else
+#define _X_ATTRIBUTE_PRINTF(x,y)
+#endif
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define _X_INLINE inline
+#elif defined(__GNUC__)
+#define _X_INLINE __inline__
+#else
+#define _X_INLINE
+#endif
+#ifndef _X_RESTRICT_KYWD
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L && !defined(__cplusplus)
+#define _X_RESTRICT_KYWD restrict
+#elif defined(__GNUC__)
+#define _X_RESTRICT_KYWD __restrict__
+#else
+#define _X_RESTRICT_KYWD
+#endif
+#endif
+#define _X_UNUSED __attribute__((__unused__))
+#define _X_NOTSAN
+#define _X_NONSTRING
+#endif
+"""
+header = src / "termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/xorgproto/include/X11/Xfuncproto.h"
+header.parent.mkdir(parents=True, exist_ok=True)
+if not header.exists():
+    header.write_text(xfuncproto)
+else:
+    existing = header.read_text()
+    if "_X_HIDDEN" not in existing:
+        header.write_text(xfuncproto)
+
+# Fix xkbcomp's host utility rule: CMake COMMAND does not interpret shell && or > tokens.
+def patch_xkbcomp(s):
+    old = """add_custom_command(
+        OUTPUT "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND "/usr/bin/gcc" "-o" "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
+            "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        WORKING_DIRECTORY "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        COMMENT "Generating source code (ks_tables.h)"
+        VERBATIM)"""
+    new = """find_program(HOST_C_COMPILER NAMES cc gcc REQUIRED)
+add_custom_command(
+        OUTPUT "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND "\${HOST_C_COMPILER}" -o "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
+        COMMAND /bin/sh -c "\\""\${CMAKE_CURRENT_BINARY_DIR}/makekeys\\" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h > \\"\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h\\""
+        DEPENDS "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
+                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/keysymdef.h"
+                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/XF86keysym.h"
+                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/Sunkeysym.h"
+                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/DECkeysym.h"
+                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/HPkeysym.h"
+        WORKING_DIRECTORY "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        COMMENT "Generating source code (ks_tables.h)"
+        VERBATIM)"""
+    return once(s, old, new, "xkbcomp host makekeys rule")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xkbcomp.cmake", patch_xkbcomp)
+
+# Correct a copied target name in the upstream Xau recipe.
+def patch_xau(s):
+    return once(s,
+        'target_compile_options(Xdmcp PRIVATE \${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        'target_compile_options(Xau PRIVATE \${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        "Xau compile options target")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cmake", patch_xau)
+
+# Correct Kotlin escape depth in the generated Alpine hostname and hosts files.
+def patch_manager_runtime_strings(s):
+    s = once(s,
+        'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\\\\\n")',
+        'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\n")',
+        "Alpine hostname newline")
+    s = once(s,
+        'hosts.writeText("127.0.0.1 localhost\\\\\\\\n127.0.1.1 alpine-kde\\\\\\\\n::1 localhost ip6-localhost\\\\\\\\n")',
+        'hosts.writeText("127.0.0.1 localhost\\\\n127.0.1.1 alpine-kde\\\\n::1 localhost ip6-localhost\\\\n")',
+        "Alpine hosts newlines")
+    s = s.replace('PS1=\\\\\\\\\\\\\\\\u@\\\\\\\\\\\\\\\\h:\\\\\\\\\\\\\\\\w# ', 'PS1=\\\\\\\\u@\\\\\\\\h:\\\\\\\\w# ')
+    return s
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager_runtime_strings)
+
 # Update visible distro branding while preserving the upstream application structure.
 for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
             "app/src/main/res/values/strings.xml"]:
