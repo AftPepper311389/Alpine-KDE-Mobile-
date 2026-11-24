@@ -91,6 +91,8 @@ jobs:
       - name: Audit generated source and native build configuration
         run: |
           set -eu
+          sh -n scripts/build-alpine-rootfs.sh
+          bash -n scripts/prepare-linuxhub-alpine.sh
           python3 - <<'PY'
           from pathlib import Path
           script = Path("scripts/prepare-linuxhub-alpine.sh").read_text()
@@ -119,6 +121,9 @@ jobs:
           grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'AlpineKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          grep -Fq 'ContainerPaths(this@X11ServerService).rootfsDir' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'ubuntu-24.04/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'XKB_ASSET' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-alpine-rootfs.sh
           echo "Generated Kotlin/CMake/Gradle migration audit: OK"
 
