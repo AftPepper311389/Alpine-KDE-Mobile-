@@ -6,7 +6,7 @@ ROOTFS_TAR="${2:?missing rootfs archive}"
 ASSETS="$SRC/app/src/main/assets"
 mkdir -p "$ASSETS/rootfs"
 install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz"
-sha256sum "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
+gzip -dc "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | sha256sum | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
 
 # Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
 rm -rf "$ASSETS/offline"
