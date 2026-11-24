@@ -110,6 +110,8 @@ jobs:
           ! grep -q 'linux-aarch64' linuxhub-1.2.0/app/build.gradle.kts
           grep -q 'noCompress += listOf("tar", "gz")' linuxhub-1.2.0/app/build.gradle.kts
           grep -q 'startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          ! grep -Fq 'exec /usr/bin/su' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'exec su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           echo "Generated Kotlin/CMake/Gradle migration audit: OK"
 
       - name: Set up JDK 17
