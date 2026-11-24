@@ -126,6 +126,7 @@ def patch_manager(s):
                     }
 """, 1)
     s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
+    s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
     s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
     s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Alpine 已完成初始化" }')
 
