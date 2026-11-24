@@ -10,7 +10,7 @@ gzip -dc "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | sha256sum | awk '{print
 
 # Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
 rm -rf "$ASSETS/offline"
-rm -f "$ASSETS/desktop/ubuntu-wallpaper.jpg" "$ASSETS/desktop/ubuntu-wallpaper.png" "$ASSETS/desktop/whitesur-xfce.tar"
+rm -f "$ASSETS/x11/xkb-data.tar" "$ASSETS/desktop/ubuntu-wallpaper.jpg" "$ASSETS/desktop/ubuntu-wallpaper.png" "$ASSETS/desktop/whitesur-xfce.tar"
 
 python3 - "$SRC" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256" <<'PY'
 from pathlib import Path
@@ -105,6 +105,15 @@ def patch_manager(s):
     s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
                   'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\n")')
     s = s.replace('File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders").deleteRecursively()\n                    File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders.0").deleteRecursively()\n', '')
+    s = s.replace('''                    val x11Share = File(paths.rootfsDir, "usr/share/X11")
+                    verifyAsset(XKB_ASSET, XKB_SHA256)
+                    context.assets.open(XKB_ASSET).use { TarGzExtractor.extract(it, x11Share) }
+''', '''                    check(File(paths.rootfsDir, "usr/share/X11/xkb/rules/evdev").isFile) {
+                        "Alpine xkeyboard-config package is missing"
+                    }
+''')
+    s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
+    s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
     s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Alpine 已完成初始化" }')
 
     # Do not install Ubuntu-only Debian packages during first boot.
