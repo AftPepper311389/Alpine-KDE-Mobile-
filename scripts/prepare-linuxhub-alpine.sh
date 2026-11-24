@@ -246,4 +246,4 @@ if old not in s and new not in s:
     raise SystemExit("Unexpected Gradle wrapper distribution URL")
 p.write_text(s.replace(old, new))
 PY
-grep -q '^distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip "$SRC/gradle/wrapper/gradle-wrapper.properties"
+grep -Fq 'distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip' "$SRC/gradle/wrapper/gradle-wrapper.properties"
