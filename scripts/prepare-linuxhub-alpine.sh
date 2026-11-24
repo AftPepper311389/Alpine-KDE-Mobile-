@@ -81,6 +81,8 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt",
      lambda s: s.replace("InstallComponent.UBUNTU", "InstallComponent.ALPINE")
                  .replace("InstallComponent.APT", "InstallComponent.APK")
                  .replace("InstallComponent.XFCE", "InstallComponent.KDE"))
+edit("app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt",
+     lambda s: s.replace("InstallComponent.XFCE", "InstallComponent.KDE"))
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
      lambda s: s.replace('    val xfceGpuRecoveryMarker = File(rootfsDir, ".doro-xfce-gpu-recovery-v1")\n', ''))
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxProcessSession.kt",
@@ -299,6 +301,14 @@ for rel in [
     "app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt",
     "app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt",
     "app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt",
+]:
+    (src / rel).unlink(missing_ok=True)
+
+# Drop tests that asserted removed Debian/XFCE behavior.
+for rel in [
+    "app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt",
 ]:
     (src / rel).unlink(missing_ok=True)
 
