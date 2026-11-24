@@ -382,10 +382,6 @@ edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cma
 # Correct Kotlin escape depth in the generated Alpine hostname and hosts files.
 def patch_manager_runtime_strings(s):
     s = once(s,
-        'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\\\n")',
-        'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\n")',
-        "rootfs marker newline")
-    s = once(s,
         'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\\\\\n")',
         'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\n")',
         "Alpine hostname newline")
