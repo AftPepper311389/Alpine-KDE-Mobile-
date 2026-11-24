@@ -379,19 +379,7 @@ def patch_xau(s):
         "Xau compile options target")
 edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cmake", patch_xau)
 
-# Correct Kotlin escape depth in the generated Alpine hostname and hosts files.
-def patch_manager_runtime_strings(s):
-    s = once(s,
-        'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\n")',
-        'File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\\\n")',
-        "Alpine hostname newline")
-    s = once(s,
-        'hosts.writeText("127.0.0.1 localhost\\\\n127.0.1.1 alpine-kde\\\\n::1 localhost ip6-localhost\\\\n")',
-        'hosts.writeText("127.0.0.1 localhost\\\\n127.0.1.1 alpine-kde\\\\n::1 localhost ip6-localhost\\\\n")',
-        "Alpine hosts newlines")
-    s = s.replace('PS1=\\\\\\\\\\\\\\\\u@\\\\\\\\\\\\\\\\h:\\\\\\\\\\\\\\\\w# ', 'PS1=\\\\\\\\u@\\\\\\\\h:\\\\\\\\w# ')
-    return s
-edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager_runtime_strings)
+# Hostname and hosts Kotlin escape sequences are written correctly by patch_manager above.
 
 # Update visible distro branding while preserving the upstream application structure.
 for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
