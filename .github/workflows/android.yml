@@ -82,7 +82,7 @@ jobs:
           bash scripts/prepare-linuxhub-alpine.sh \
             "$GITHUB_WORKSPACE/linuxhub-1.2.0" \
             "$GITHUB_WORKSPACE/.work/alpine-rootfs-aarch64.tar.gz"
-          grep -q 'alpine-rootfs-aarch64.tar.gz' \
+          grep -q 'alpine-rootfs-aarch64.tar' \
             linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -q 'startplasma-x11' \
             linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
@@ -153,7 +153,7 @@ jobs:
           echo "APK entry diagnostics:"
           grep -E '(^assets/|^lib/arm64-v8a/|alpine-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
           for entry in \
-            assets/rootfs/alpine-rootfs-aarch64.tar.gz \
+            assets/rootfs/alpine-rootfs-aarch64.tar \
             lib/arm64-v8a/libproot.so \
             lib/arm64-v8a/libproot-loader.so \
             lib/arm64-v8a/libXlorie.so \
@@ -164,7 +164,7 @@ jobs:
             fi
           done
           EXPECTED=$(cat app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256)
-          ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
+          ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar | sha256sum | awk '{print $1}')
           echo "Expected rootfs SHA256: $EXPECTED"
           echo "Actual rootfs SHA256:   $ACTUAL"
           test "$EXPECTED" = "$ACTUAL"
