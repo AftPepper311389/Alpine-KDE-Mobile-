@@ -93,12 +93,11 @@ jobs:
           set -eu
           python3 - <<'PY'
           from pathlib import Path
-          import re
           script = Path("scripts/prepare-linuxhub-alpine.sh").read_text()
-          match = re.search(r'python3 - "\\$SRC".*?<<\'PY\'\\n(.*?)\\nPY\\n', script, re.S)
-          if not match:
-              raise SystemExit("Migration Python block was not found")
-          compile(match.group(1), "prepare-linuxhub-alpine.py", "exec")
+          marker = script.index("<<'PY'")
+          start = script.index(chr(10), marker) + 1
+          end = script.index(chr(10) + "PY" + chr(10), start)
+          compile(script[start:end], "prepare-linuxhub-alpine.py", "exec")
           print("Migration generator syntax: OK")
           PY
           LORIE=linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp
