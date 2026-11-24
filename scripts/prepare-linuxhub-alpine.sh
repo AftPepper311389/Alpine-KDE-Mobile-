@@ -289,6 +289,33 @@ def patch_desktop(s):
 '''
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
+# Remove the upstream GPU wrapper from desktop launchers. Alpine's package
+# commands are native; retaining the old Ubuntu helper breaks KDE app launchers.
+def patch_native_launchers(s):
+    a = s.index("    fun patchDesktop(content: String, name: String): String {")
+    b = s.index("\n    private fun quote(", a)
+    replacement = r'''    fun patchDesktop(content: String, name: String): String {
+        return content.lineSequence().joinToString("\n") { originalLine ->
+            val trimmed = originalLine.trim()
+            val repairedLine = if (
+                trimmed.isNotEmpty() &&
+                !trimmed.startsWith("#") &&
+                !trimmed.startsWith("[") &&
+                !trimmed.contains('=')
+            ) "Exec=$trimmed" else originalLine
+            if (!repairedLine.startsWith("Exec=")) return@joinToString repairedLine
+            var command = repairedLine.removePrefix("Exec=").removePrefix("/usr/local/bin/doro-gpu-run ")
+            if (name == "qq.desktop") {
+                command = command.replace("/opt/QQ/qq --no-sandbox", "/opt/QQ/qq")
+                    .replace("/opt/QQ/qq", "/opt/QQ/qq --no-sandbox")
+            }
+            "Exec=$command"
+        } + if (content.endsWith('\n')) "\n" else ""
+    }
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_native_launchers)
+
 # The KDE session no longer uses the upstream XFCE wallpaper helper.
 def remove_xfce_wallpaper(s):
     a = s.index("    fun wallpaperScript()")
