@@ -110,6 +110,9 @@ jobs:
           ! grep -q 'linux-aarch64' linuxhub-1.2.0/app/build.gradle.kts
           grep -q 'noCompress += listOf("tar", "gz")' linuxhub-1.2.0/app/build.gradle.kts
           grep -q 'startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          grep -Fq 'ContainerPaths(this@X11ServerService)' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           ! grep -Fq 'exec /usr/bin/su' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'exec su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           echo "Generated Kotlin/CMake/Gradle migration audit: OK"
