@@ -227,8 +227,8 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", 
 def patch_xau_secure_wipe(s):
     if "static void xau_secure_clear" not in s:
         s = once(s,
-            "#include <stdlib.h>\\n",
-            "#include <stdlib.h>\\n\\nstatic void xau_secure_clear(void *buffer, size_t length) {\\n    volatile unsigned char *p = (volatile unsigned char *) buffer;\\n    while (length-- > 0) *p++ = 0;\\n}\\n",
+            "#include <stdlib.h>\n",
+            "#include <stdlib.h>\n\nstatic void xau_secure_clear(void *buffer, size_t length) {\n    volatile unsigned char *p = (volatile unsigned char *) buffer;\n    while (length-- > 0) *p++ = 0;\n}\n",
             "Xau secure-clear helper")
     s = s.replace("explicit_bzero (", "xau_secure_clear (")
     return s
