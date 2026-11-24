@@ -166,7 +166,7 @@ def patch_manager(s):
     # Hostname and first-boot user creation use Alpine's shadow tools.
     a = s.index('    private fun writeContainerFiles()')
     b = s.index('    fun loadInitializationState()', a)
-    s = s[:a] + '''    private fun writeContainerFiles() {
+    s = s[:a] + r'''    private fun writeContainerFiles() {
         ensureNetworkConfig()
         File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\n")
         val hosts = File(paths.rootfsDir, "etc/hosts")
@@ -198,7 +198,7 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt",
 def patch_desktop(s):
     a = s.index('    fun sessionScript(')
     b = s.index('    fun patchDesktop(', a)
-    replacement = '''    fun sessionScript(display: String, username: String): String =
+    replacement = r'''    fun sessionScript(display: String, username: String): String =
         "export DISPLAY=${quote(display)}; " +
             "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
             "mkdir -p \"\\$XDG_RUNTIME_DIR\"; chmod 700 \"\\$XDG_RUNTIME_DIR\"; " +
