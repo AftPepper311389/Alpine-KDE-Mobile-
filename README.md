@@ -4,7 +4,7 @@ A single-APK, rootless ARM64 Linux desktop for Android.
 
 ## Source base
 
-The Android application is built from the upstream [Linuxhub 1.2.0](https://github.com/xishanp/Linuxhub/tree/1.2.0) source tag. This repository contains the Alpine migration overlay and CI build recipe; it does not maintain a parallel Android runtime.
+The Android application is built from the upstream [Linuxhub 1.2.0](https://github.com/xishanp/Linuxhub/tree/1.2.0) source at commit `dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c`. **This Git repository is an overlay, not a complete mirror of Linuxhub:** it stores the Alpine migration scripts and CI workflow, then CI fetches and verifies the complete upstream source tree at that pinned commit before patching and building it. The generated APK includes the migrated app and runtime.
 
 ## Runtime design
 
