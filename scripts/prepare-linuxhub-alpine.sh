@@ -240,7 +240,7 @@ def patch_manager(s):
         b = text.index(end, a)
         return text[:a] + text[b:]
     s = remove_between(s, '    private fun ensureTunaAptMirror()', '    private fun ensureFetchScript()', "Ubuntu APT helpers")
-    s = remove_between(s, '    private fun ensureDesktopWallpaper()', '    fun stopDesktopServices()', "XFCE desktop customizations")
+    s = remove_between(s, '    private fun ensureDesktopWallpaper(', '    fun stopDesktopServices()', "XFCE desktop customizations")
     s = remove_between(s, '    private fun ensureGetifaddrsBridge()', '    private fun copyAsset(', "unused Ubuntu getifaddrs bridge")
     s = remove_between(s, '    private fun installMesaGpuRuntime()', '    private fun createContainerProgress(', "offline Debian and GPU installer")
     s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
