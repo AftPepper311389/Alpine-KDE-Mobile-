@@ -8,7 +8,7 @@ printf '%s\n' "$APK_REPO/main" "$APK_REPO/community" > "$ROOTFS/etc/apk/reposito
 
 apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   --repositories-file "$ROOTFS/etc/apk/repositories" add --no-cache \
-  alpine-base bash shadow sudo dbus dbus-x11 polkit elogind xkeyboard-config xkbcomp \
+  alpine-base bash shadow sudo util-linux-login dbus dbus-x11 polkit elogind xkeyboard-config xkbcomp \
   plasma-desktop plasma-workspace plasma-workspace-x11 kwin \
   dolphin konsole kate systemsettings plasma-nm plasma-pa \
   pulseaudio xwayland xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk \
@@ -18,20 +18,15 @@ apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   fastfetch git curl wget python3 py3-pip \
   tzdata ca-certificates shared-mime-info procps coreutils util-linux
 
-# Alpine's BusyBox includes the su applet, but apk --root does not always
-# create its applet symlink. Create it explicitly, then retain the upstream
-# Debian-compatible path for any remaining callers.
-if [ -x "$ROOTFS/bin/busybox" ] && "$ROOTFS/bin/busybox" --list | grep -qx su; then
-  ln -sf /bin/busybox "$ROOTFS/bin/su"
-else
-  echo "ERROR: Alpine BusyBox was built without the su applet" >&2
-  exit 1
-fi
-mkdir -p "$ROOTFS/usr/bin"
-ln -sf /bin/su "$ROOTFS/usr/bin/su"
+# Use Alpine's real util-linux su binary, not a fabricated file or a BusyBox symlink.
+# util-linux-login supplies /bin/su and its PAM/runtime dependencies.
 test -x "$ROOTFS/bin/su"
+test ! -L "$ROOTFS/bin/su"
+apk --root "$ROOTFS" info -W /bin/su | grep -q "util-linux-login"
+mkdir -p "$ROOTFS/usr/bin"
+ln -sfn /bin/su "$ROOTFS/usr/bin/su"
 test -x "$ROOTFS/usr/bin/su"
-"$ROOTFS/bin/su" --help >/dev/null 2>&1 || true
+chroot "$ROOTFS" /bin/su --version
 
 rm -rf "$ROOTFS/var/cache/apk/"* "$ROOTFS/root/.cache/"* "$ROOTFS/tmp/"* 2>/dev/null || true
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
