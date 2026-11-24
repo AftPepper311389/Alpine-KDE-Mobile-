@@ -338,19 +338,20 @@ def patch_xkbcomp(s):
         COMMENT "Generating source code (ks_tables.h)"
         VERBATIM)"""
     new = """find_program(HOST_C_COMPILER NAMES cc gcc REQUIRED)
-add_custom_command(
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+execute_process(
         COMMAND "${HOST_C_COMPILER}" -o "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
-        COMMAND /bin/sh -c "\\""${CMAKE_CURRENT_BINARY_DIR}/makekeys\\" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h > \\"${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h\\""
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
-                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/keysymdef.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/XF86keysym.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/Sunkeysym.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/DECkeysym.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/HPkeysym.h"
+        RESULT_VARIABLE MAKEKEYS_COMPILE_RESULT)
+if(NOT MAKEKEYS_COMPILE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to build host makekeys utility")
+endif()
+execute_process(
+        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/makekeys" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
-        COMMENT "Generating source code (ks_tables.h)"
-        VERBATIM)"""
+        OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        RESULT_VARIABLE MAKEKEYS_RESULT)
+if(NOT MAKEKEYS_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to generate ks_tables.h")
+endif()"""
     return once(s, old, new, "xkbcomp host makekeys rule")
 edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xkbcomp.cmake", patch_xkbcomp)
 
