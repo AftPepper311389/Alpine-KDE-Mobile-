@@ -104,6 +104,7 @@ jobs:
           test -s "$LORIE/xorgproto/include/X11/Xfuncproto.h"
           grep -q '#define _X_HIDDEN' "$LORIE/xorgproto/include/X11/Xfuncproto.h"
           grep -q 'execute_process(' "$LORIE/recipes/xkbcomp.cmake"
+          grep -Fq '"${CMAKE_CURRENT_BINARY_DIR}"' "$LORIE/recipes/xorgproto.cmake"
           ! grep -q '"&&"' "$LORIE/recipes/xkbcomp.cmake"
           grep -q 'target_compile_options(Xau PRIVATE' "$LORIE/recipes/Xau.cmake"
           ! grep -q 'linux-aarch64' linuxhub-1.2.0/app/build.gradle.kts
