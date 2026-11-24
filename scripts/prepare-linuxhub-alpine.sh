@@ -331,24 +331,24 @@ else:
 # Fix xkbcomp's host utility rule: CMake COMMAND does not interpret shell && or > tokens.
 def patch_xkbcomp(s):
     old = """add_custom_command(
-        OUTPUT "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
-        COMMAND "/usr/bin/gcc" "-o" "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
-            "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
-        WORKING_DIRECTORY "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND "/usr/bin/gcc" "-o" "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
+            "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
         COMMENT "Generating source code (ks_tables.h)"
         VERBATIM)"""
     new = """find_program(HOST_C_COMPILER NAMES cc gcc REQUIRED)
 add_custom_command(
-        OUTPUT "\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
-        COMMAND "\${HOST_C_COMPILER}" -o "\${CMAKE_CURRENT_BINARY_DIR}/makekeys" "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
-        COMMAND /bin/sh -c "\\""\${CMAKE_CURRENT_BINARY_DIR}/makekeys\\" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h > \\"\${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h\\""
-        DEPENDS "\${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
-                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/keysymdef.h"
-                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/XF86keysym.h"
-                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/Sunkeysym.h"
-                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/DECkeysym.h"
-                "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/HPkeysym.h"
-        WORKING_DIRECTORY "\${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND "${HOST_C_COMPILER}" -o "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
+        COMMAND /bin/sh -c "\\""${CMAKE_CURRENT_BINARY_DIR}/makekeys\\" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h > \\"${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h\\""
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
+                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/keysymdef.h"
+                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/XF86keysym.h"
+                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/Sunkeysym.h"
+                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/DECkeysym.h"
+                "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11/HPkeysym.h"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
         COMMENT "Generating source code (ks_tables.h)"
         VERBATIM)"""
     return once(s, old, new, "xkbcomp host makekeys rule")
