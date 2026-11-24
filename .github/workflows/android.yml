@@ -17,11 +17,16 @@ concurrency:
 jobs:
   build:
     name: Build embedded Alpine KDE ARM64 APK from Linuxhub 1.2.0
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - name: Checkout migration overlay
         uses: actions/checkout@v4
+
+      - name: Enable ARM64 emulation for rootfs build
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - name: Build Alpine 3.21 ARM64 + KDE Plasma X11 rootfs
         run: |
