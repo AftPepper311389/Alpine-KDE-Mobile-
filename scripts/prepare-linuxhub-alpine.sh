@@ -244,6 +244,35 @@ def patch_desktop(s):
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
 
+# Update the X11 page's diagnostics and boot splash to reflect the KDE session.
+def patch_x11_screen(s):
+    s = s.replace("XFCE会话已退出", "KDE Plasma 会话已退出")
+    s = s.replace("XFCE桌面启动失败", "KDE Plasma 桌面启动失败")
+    s = s.replace("UbuntuBootSplash", "AlpineKdeBootSplash")
+    s = s.replace('contentDescription = "Ubuntu"', 'contentDescription = "Alpine KDE"')
+    s = s.replace('Text("Ubuntu",', 'Text("Alpine KDE",')
+    return s
+edit("app/src/main/java/com/java/myapplication/X11Screens.kt", patch_x11_screen)
+
+# Replace upstream XFCE-oriented assertions with KDE/X11 session checks.
+def patch_desktop_tests(s):
+    s = s.replace('assertTrue(script.contains("dbus-launch --exit-with-session"))',
+                  'assertTrue(script.contains("dbus-run-session -- /usr/bin/startplasma-x11"))')
+    s = s.replace('assertTrue(script.contains("MOZ_DISABLE_CONTENT_SANDBOX=1"))',
+                  'assertTrue(script.contains("XDG_CURRENT_DESKTOP=KDE"))')
+    s = s.replace('assertTrue(script.contains("LIBGL_ALWAYS_SOFTWARE=1"))',
+                  'assertTrue(script.contains("QT_QPA_PLATFORM=xcb"))')
+    s = s.replace('''    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''',
+                  '''        assertTrue(script.contains("KWIN_COMPOSE=N"))
+        assertTrue(!script.contains("startxfce4"))
+    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''', 1)
+    return s
+edit("app/src/test/java/com/doro/terminal/shell/linux/DesktopCompatibilityTest.kt", patch_desktop_tests)
+
 # Android's bionic libc does not expose explicit_bzero in the NDK headers.
 # Keep Xauthority credential wiping explicit and optimization-resistant.
 def patch_xau_secure_wipe(s):
@@ -443,8 +472,8 @@ if 'noCompress += listOf("tar")' in g:
 elif 'noCompress += listOf("tar", "gz")' not in g:
     raise SystemExit("Could not locate Android rootfs noCompress configuration")
 if "versionCode = 69" in g:
-    g = g.replace("versionCode = 69", "versionCode = 122", 1)
-elif "versionCode = 122" not in g:
+    g = g.replace("versionCode = 69", "versionCode = 123", 1)
+elif "versionCode = 123" not in g:
     raise SystemExit("Unexpected upstream versionCode")
 if 'versionName = "1.1.9Debug"' in g:
     g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
