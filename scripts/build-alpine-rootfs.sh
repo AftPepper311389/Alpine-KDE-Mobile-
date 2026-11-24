@@ -18,16 +18,20 @@ apk --root "$ROOTFS" --initdb --arch aarch64 --keys-dir /etc/apk/keys \
   fastfetch git curl wget python3 py3-pip \
   tzdata ca-certificates shared-mime-info procps coreutils util-linux
 
-# Linuxhub 1.2.0 still has callers using the Debian-style /usr/bin/su path.
-# Alpine provides su under /bin/su; expose a compatibility symlink for all callers.
-if [ -x "$ROOTFS/bin/su" ]; then
-  mkdir -p "$ROOTFS/usr/bin"
-  ln -sf /bin/su "$ROOTFS/usr/bin/su"
-elif [ ! -x "$ROOTFS/usr/bin/su" ]; then
-  echo "ERROR: Alpine rootfs has no executable su (checked /bin/su and /usr/bin/su)" >&2
+# Alpine's BusyBox includes the su applet, but apk --root does not always
+# create its applet symlink. Create it explicitly, then retain the upstream
+# Debian-compatible path for any remaining callers.
+if [ -x "$ROOTFS/bin/busybox" ] && "$ROOTFS/bin/busybox" --list | grep -qx su; then
+  ln -sf /bin/busybox "$ROOTFS/bin/su"
+else
+  echo "ERROR: Alpine BusyBox was built without the su applet" >&2
   exit 1
 fi
+mkdir -p "$ROOTFS/usr/bin"
+ln -sf /bin/su "$ROOTFS/usr/bin/su"
+test -x "$ROOTFS/bin/su"
 test -x "$ROOTFS/usr/bin/su"
+"$ROOTFS/bin/su" --help >/dev/null 2>&1 || true
 
 rm -rf "$ROOTFS/var/cache/apk/"* "$ROOTFS/root/.cache/"* "$ROOTFS/tmp/"* 2>/dev/null || true
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run"
