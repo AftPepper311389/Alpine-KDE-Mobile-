@@ -56,7 +56,7 @@ def patch_models(s):
     s = s.replace('PYTHON("Python", "基础组件", defaultSelected = true, packages = listOf("python3", "python3-pip", "python3-venv"))',
                   'PYTHON("Python 3", "基础组件", defaultSelected = true, packages = listOf("python", "python-pip"))')
     s = s.replace('CHINESE("中文语言环境", "基础组件", defaultSelected = true, packages = listOf("locales", "language-pack-zh-hans", "fonts-noto-cjk"))',
-                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("noto-fonts-cjk", "fcitx5", "fcitx5-chinese-addons"))')
+                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("noto-fonts-cjk", "fcitx5", "fcitx5-gtk", "fcitx5-qt", "fcitx5-chinese-addons"))')
     s = s.replace('FIREFOX("Mozilla Firefox", "内置应用")',
                   'FIREFOX("Mozilla Firefox", "内置应用", supported = false)')
     s = s.replace('PYTHON_AI("Python AI 环境", "AI 开发", packages = listOf("python3-numpy", "python3-scipy", "python3-pandas", "python3-sklearn"))',
@@ -94,9 +94,7 @@ def patch_manager(s):
     s = s.replace('"Ubuntu 已完成初始化"', '"Arch Linux 已完成初始化"')
     s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "archlinuxarm")')
     s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "rolling")')
-    s = s.replace('distribution = "archlinuxarm"', 'distribution = "archlinuxarm"')
-    s = s.replace('version = "rolling"', 'version = "rolling"')
-    s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
+            s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
                   'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")')
     s = once(s,
         'var state = loadInitializationState()?.takeIf { it.username == username }',
@@ -204,7 +202,7 @@ def patch_manager(s):
 
     private fun userCreationScript(username: String, password: CharArray): String {
         val credentials = "$username:${password.concatToString()}"
-        return "id -u ${shell(username)} >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ${shell(username)}; " +
+        return "groupadd -f wheel; id -u ${shell(username)} >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ${shell(username)}; " +
             "mkdir -p /home/${shell(username)}; printf '%s\\n' ${shell(credentials)} | chpasswd"
     }
 
