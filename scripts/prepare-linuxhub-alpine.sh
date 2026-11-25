@@ -12,7 +12,7 @@ sha256sum "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz" | awk '{print $1}'
 rm -rf "$ASSETS/offline"
 rm -f "$ASSETS/x11/xkb-data.tar" "$ASSETS/desktop/ubuntu-wallpaper.jpg" "$ASSETS/desktop/ubuntu-wallpaper.png" "$ASSETS/desktop/whitesur-xfce.tar"
 
-python3 - "$SRC" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256" <<'PY'
+python3 - "$SRC" "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256" <<'PY'
 from pathlib import Path
 import re, sys
 
@@ -48,15 +48,15 @@ def patch_models(s):
     s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
                   'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
     s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
-                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace-x11", "kwin"))')
+                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace", "kwin-x11"))')
     s = s.replace('X11("X11", "内置组件", packages = listOf("dbus-x11", "x11-xserver-utils", "xterm"))',
-                  'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus-x11"))')
+                  'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus"))')
     s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
                   'FILE_MANAGER("Dolphin 文件管理器", "内置组件", packages = listOf("dolphin", "konsole", "kate"))')
     s = s.replace('PYTHON("Python", "基础组件", defaultSelected = true, packages = listOf("python3", "python3-pip", "python3-venv"))',
-                  'PYTHON("Python 3", "基础组件", defaultSelected = true, packages = listOf("python3", "py3-pip"))')
+                  'PYTHON("Python 3", "基础组件", defaultSelected = true, packages = listOf("python", "python-pip"))')
     s = s.replace('CHINESE("中文语言环境", "基础组件", defaultSelected = true, packages = listOf("locales", "language-pack-zh-hans", "fonts-noto-cjk"))',
-                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("font-noto-cjk", "fcitx5", "fcitx5-chinese-addons"))')
+                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("noto-fonts-cjk", "fcitx5", "fcitx5-chinese-addons"))')
     s = s.replace('FIREFOX("Mozilla Firefox", "内置应用")',
                   'FIREFOX("Mozilla Firefox", "内置应用", supported = false)')
     s = s.replace('PYTHON_AI("Python AI 环境", "AI 开发", packages = listOf("python3-numpy", "python3-scipy", "python3-pandas", "python3-sklearn"))',
@@ -94,8 +94,8 @@ def patch_manager(s):
     s = s.replace('"Ubuntu 已完成初始化"', '"Arch Linux 已完成初始化"')
     s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "archlinuxarm")')
     s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "rolling")')
-    s = s.replace('distribution = "archlinuxarm"', 'distribution = "alpine"')
-    s = s.replace('version = values.getProperty("version", "3.21")', 'version = "rolling"')
+    s = s.replace('distribution = "archlinuxarm"', 'distribution = "archlinuxarm"')
+    s = s.replace('version = "rolling"', 'version = "rolling"')
     s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
                   'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")')
     s = once(s,
