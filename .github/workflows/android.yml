@@ -1,4 +1,4 @@
-name: Linuxhub 1.2.0 Alpine KDE APK
+name: Linuxhub 1.2.0 Arch Linux KDE PACMAN
 
 on:
   push:
@@ -11,47 +11,45 @@ permissions:
   contents: read
 
 concurrency:
-  group: alpine-kde-${{ github.event.pull_request.number || github.ref }}
+  group: archlinuxarm-kde-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-rootfs:
-    name: Build Alpine ARM64 rootfs natively (no emulation)
+    name: Build Arch Linux ARM64 rootfs natively (no emulation)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 180
     steps:
       - name: Checkout migration overlay
         uses: actions/checkout@v4
 
-      - name: Verify native ARM64 runner
+      - name: Verify native ARM64 runner and install archive tools
         run: |
           test "$(uname -m)" = "aarch64"
-          docker version
-          docker run --rm alpine:3.21 uname -m
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+          bsdtar --version
 
-      - name: Build Alpine 3.21 ARM64 + KDE Plasma X11 rootfs
+      - name: Build official Arch Linux ARM64 + KDE Plasma X11 rootfs
         run: |
           mkdir -p .work
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            alpine:3.21 sh scripts/build-alpine-rootfs.sh
-          sudo tar --format=ustar --numeric-owner -I 'gzip -1' -cf .work/alpine-rootfs-aarch64.tar.gz \
-            -C .work/alpine-rootfs .
-          sha256sum .work/alpine-rootfs-aarch64.tar.gz
-          sudo du -sh .work/alpine-rootfs .work/alpine-rootfs-aarch64.tar.gz
+          sudo bash scripts/build-archlinuxarm-rootfs.sh
+          sudo tar --format=ustar --numeric-owner --xattrs --acls -I 'gzip -1' -cf .work/archlinuxarm-rootfs-aarch64.tar.gz \
+            -C .work/archlinuxarm-rootfs .
+          sudo sha256sum .work/archlinuxarm-rootfs-aarch64.tar.gz
+          sudo du -sh .work/archlinuxarm-rootfs .work/archlinuxarm-rootfs-aarch64.tar.gz
 
       - name: Upload native ARM64 rootfs
         uses: actions/upload-artifact@v4
         with:
-          name: alpine-rootfs-aarch64
-          path: .work/alpine-rootfs-aarch64.tar.gz
+          name: archlinuxarm-rootfs-aarch64
+          path: .work/archlinuxarm-rootfs-aarch64.tar.gz
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
 
-  build-apk:
-    name: Build Linuxhub 1.2.0 APK and verify embedded Alpine ARM64
+  build-pacman:
+    name: Build Linuxhub 1.2.0 PACMAN and verify embedded Arch Linux ARM64
     runs-on: ubuntu-24.04
     needs: build-rootfs
     timeout-minutes: 180
@@ -62,13 +60,13 @@ jobs:
       - name: Download native ARM64 rootfs
         uses: actions/download-artifact@v4
         with:
-          name: alpine-rootfs-aarch64
+          name: archlinuxarm-rootfs-aarch64
           path: .work
 
       - name: Verify rootfs artifact
         run: |
-          test -s .work/alpine-rootfs-aarch64.tar.gz
-          sha256sum .work/alpine-rootfs-aarch64.tar.gz
+          test -s .work/archlinuxarm-rootfs-aarch64.tar.gz
+          sha256sum .work/archlinuxarm-rootfs-aarch64.tar.gz
 
       - name: Fetch official Linuxhub 1.2.0 source
         run: |
@@ -93,29 +91,29 @@ jobs:
           test -s linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/CMakeLists.txt
           echo "Complete upstream source checkout verified: $UPSTREAM_COMMIT"
 
-      - name: Replace Ubuntu runtime with embedded Alpine KDE
+      - name: Replace Ubuntu runtime with embedded Arch Linux KDE
         run: |
-          bash scripts/prepare-linuxhub-alpine.sh \
+          bash scripts/prepare-linuxhub-archlinuxarm.sh \
             "$GITHUB_WORKSPACE/linuxhub-1.2.0" \
-            "$GITHUB_WORKSPACE/.work/alpine-rootfs-aarch64.tar.gz"
-          grep -q 'alpine-rootfs-aarch64.tar' \
+            "$GITHUB_WORKSPACE/.work/archlinuxarm-rootfs-aarch64.tar.gz"
+          grep -q 'archlinuxarm-rootfs-aarch64.tar.gz' \
             linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -q 'startplasma-x11' \
             linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
-          test -s linuxhub-1.2.0/app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz
+          test -s linuxhub-1.2.0/app/src/main/assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz
 
       - name: Audit generated source and native build configuration
         run: |
           set -eu
-          sh -n scripts/build-alpine-rootfs.sh
-          bash -n scripts/prepare-linuxhub-alpine.sh
+          sh -n scripts/build-archlinuxarm-rootfs.sh
+          bash -n scripts/prepare-linuxhub-archlinuxarm.sh
           python3 - <<'PY'
           from pathlib import Path
-          script = Path("scripts/prepare-linuxhub-alpine.sh").read_text()
+          script = Path("scripts/prepare-linuxhub-archlinuxarm.sh").read_text()
           marker = script.index("<<'PY'")
           start = script.index(chr(10), marker) + 1
           end = script.index(chr(10) + "PY" + chr(10), start)
-          compile(script[start:end], "prepare-linuxhub-alpine.py", "exec")
+          compile(script[start:end], "prepare-linuxhub-archlinuxarm.py", "exec")
           print("Migration generator syntax: OK")
           PY
           LORIE=linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp
@@ -130,19 +128,19 @@ jobs:
           grep -q 'startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
           grep -Fq 'ContainerPaths(this@X11ServerService)' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
-          grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           ! grep -Fq 'exec /usr/bin/su' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'private fun prootUserCommand' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'args[rootFlag] = "-i"' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           ! grep -Fq 'exec /bin/su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
-          grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'distributions/archlinuxarm-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
-          grep -Fq 'AlpineKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
+          grep -Fq 'Arch LinuxKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
           grep -Fq 'ContainerPaths(this@X11ServerService).rootfsDir' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Eq 'apt-get|dpkg|startxfce4|xfce4-' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
-          grep -Fq 'InstallComponent.ALPINE' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
+          grep -Fq 'InstallComponent.ARCHLINUXARM' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt
@@ -151,13 +149,13 @@ jobs:
           ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt
           grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt
           ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
-          grep -Fq 'distributions/alpine-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
-          grep -Fq 'alpine-3.21-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
-          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-alpine-rootfs.sh
+          grep -Fq 'distributions/archlinuxarm-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'archlinuxarm-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-archlinuxarm-rootfs.sh
           test -f linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Fq 'ubuntu-24.04/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Fq 'XKB_ASSET' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
-          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-alpine-rootfs.sh
+          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-archlinuxarm-rootfs.sh
           echo "Generated Kotlin/CMake/Gradle migration audit: OK"
 
       - name: Set up JDK 17
@@ -182,7 +180,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build single APK
+      - name: Build single PACMAN
         working-directory: linuxhub-1.2.0
         run: |
           chmod +x gradlew
@@ -198,48 +196,48 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Verify APK contains Alpine rootfs and ARM64 runtime
+      - name: Verify PACMAN contains Arch Linux rootfs and ARM64 runtime
         working-directory: linuxhub-1.2.0
         run: |
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
-          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-files.txt"
-          echo "APK entry diagnostics:"
-          grep -E '(^assets/|^lib/arm64-v8a/|alpine-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
+          PACMAN=app/build/outputs/pacman/debug/app-debug.pacman
+          test -s "$PACMAN"
+          unzip -Z1 "$PACMAN" > "$RUNNER_TEMP/pacman-files.txt"
+          echo "PACMAN entry diagnostics:"
+          grep -E '(^assets/|^lib/arm64-v8a/|archlinuxarm-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/pacman-files.txt" | head -200 || true
           for entry in \
-            assets/rootfs/alpine-rootfs-aarch64.tar.gz \
+            assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz \
             lib/arm64-v8a/libproot.so \
             lib/arm64-v8a/libproot-loader.so \
             lib/arm64-v8a/libXlorie.so \
-            assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256; do
-            if ! grep -Fxq "$entry" "$RUNNER_TEMP/apk-files.txt"; then
-              echo "::error::Missing APK entry: $entry"
+            assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256; do
+            if ! grep -Fxq "$entry" "$RUNNER_TEMP/pacman-files.txt"; then
+              echo "::error::Missing PACMAN entry: $entry"
               exit 1
             fi
           done
-          EXPECTED=$(cat app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256)
-          ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
+          EXPECTED=$(cat app/src/main/assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256)
+          ACTUAL=$(unzip -p "$PACMAN" assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
           echo "Expected rootfs SHA256: $EXPECTED"
           echo "Actual rootfs SHA256:   $ACTUAL"
           test "$EXPECTED" = "$ACTUAL"
-          sha256sum "$APK"
-          ls -lh "$APK"
+          sha256sum "$PACMAN"
+          ls -lh "$PACMAN"
 
-      - name: Upload APK diagnostic even when verification fails
+      - name: Upload PACMAN diagnostic even when verification fails
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Linuxhub-1.2.0-Alpine-KDE-APK-diagnostic
-          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
+          name: Linuxhub-1.2.0-Arch Linux-KDE-PACMAN-diagnostic
+          path: linuxhub-1.2.0/app/build/outputs/pacman/debug/app-debug.pacman
           if-no-files-found: ignore
           compression-level: 0
           retention-days: 3
 
-      - name: Upload APK
+      - name: Upload PACMAN
         uses: actions/upload-artifact@v4
         with:
-          name: Linuxhub-1.2.0-Alpine-KDE-ARM64
-          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
+          name: Linuxhub-1.2.0-Arch Linux-KDE-ARM64
+          path: linuxhub-1.2.0/app/build/outputs/pacman/debug/app-debug.pacman
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
