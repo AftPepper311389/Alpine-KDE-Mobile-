@@ -6,7 +6,7 @@ ROOTFS_TAR="${2:?missing rootfs archive}"
 ASSETS="$SRC/app/src/main/assets"
 mkdir -p "$ASSETS/rootfs"
 install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz"
-gzip -dc "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | sha256sum | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
+sha256sum "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
 
 # Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
 rm -rf "$ASSETS/offline"
@@ -109,7 +109,7 @@ def patch_manager(s):
     s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
     s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
     s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
-                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar"')
+                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar.gz"')
     s = s.replace('private const val ROOTFS_SHA256 = "0ce61ffe898bab0d0b35231c3daf1751d95c34a1963b507549c9d7dc97543e48"',
                   f'private const val ROOTFS_SHA256 = "{sha}"')
     s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
