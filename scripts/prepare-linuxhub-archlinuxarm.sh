@@ -334,7 +334,7 @@ def patch_tar_extractor(s):
                         val target = safeTarget(destination, linkTarget)
                         runCatching { Os.link(target.path, output.path) }
                             .getOrElse {
-                                check(target.isFile) { "RootFS硬链接目标不存在：\${target.path}" }
+                                check(target.isFile) { "RootFS硬链接目标不存在：${target.path}" }
                                 target.inputStream().use { input -> output.outputStream().use(input::copyTo) }
                             }
                         skipFully(tar, size)
