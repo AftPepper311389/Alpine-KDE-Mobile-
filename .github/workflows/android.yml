@@ -1,172 +1,337 @@
-name: Android CI
+name: Linuxhub 1.2.0 Arch Linux ARM KDE APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: archlinuxarm-kde-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-alpine-rootfs:
-    name: Build embedded Alpine ARM64 + KDE rootfs
+  build-rootfs:
+    name: Build Arch Linux ARM64 rootfs natively (no emulation)
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
     steps:
-      - name: Checkout source
+      - name: Checkout migration overlay
         uses: actions/checkout@v4
 
-      - name: Build Alpine ARM64 + KDE Plasma root filesystem natively
+      - name: Verify native ARM64 runner and install archive tools
         run: |
-          docker run --rm --platform linux/arm64 \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            alpine:3.24.4 sh scripts/build-alpine-rootfs.sh
+          test "$(uname -m)" = "aarch64"
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools file gnupg
+          bsdtar --version
 
-      - name: Pack rootfs with parallel xz on the ARM64 host
+      - name: Build official Arch Linux ARM64 + KDE Plasma X11 rootfs
         run: |
-          sudo chown "$(id -u):$(id -g)" .work/alpine-assets
-          sudo tar --numeric-owner -I 'xz -T0 -6' \
-            -cf "$GITHUB_WORKSPACE/.work/alpine-assets/alpine-rootfs-aarch64.tar.xz" \
-            -C "$GITHUB_WORKSPACE/.work/alpine-rootfs" .
-          sha256sum .work/alpine-assets/alpine-rootfs-aarch64.tar.xz \
-            > .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
-          sudo du -sh .work/alpine-rootfs
-          du -sh .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
+          mkdir -p .work
+          sudo bash scripts/build-archlinuxarm-rootfs.sh
+          sudo tar --format=pax --numeric-owner --xattrs --acls -I 'gzip -1' -cf .work/archlinuxarm-rootfs-aarch64.tar.gz \
+            -C .work/archlinuxarm-rootfs .
+          sudo sha256sum .work/archlinuxarm-rootfs-aarch64.tar.gz
+          sudo du -sh .work/archlinuxarm-rootfs .work/archlinuxarm-rootfs-aarch64.tar.gz
 
-      - name: Verify Alpine rootfs payload
-        run: |
-          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
-          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
-          grep -q '^KDE_DESKTOP=installed$' .work/alpine-assets/rootfs-build-info.txt
-          grep -q '^P:plasma-desktop$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:plasma-workspace$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:kwin$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:gcompat$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:mesa-dri-gallium$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:mesa-egl$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:mesa-gbm$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:mesa-gl$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:mesa-gles$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:font-dejavu$' .work/alpine-assets/alpine-kde-package-check.txt
-          grep -q '^P:font-droid-nonlatin$' .work/alpine-assets/alpine-kde-package-check.txt
-          tar -tJf .work/alpine-assets/alpine-rootfs-aarch64.tar.xz > "$RUNNER_TEMP/rootfs-files.txt"
-          grep -q './usr/bin/startplasma-wayland' "$RUNNER_TEMP/rootfs-files.txt"
-          grep -q './usr/bin/kwin_wayland' "$RUNNER_TEMP/rootfs-files.txt"
-          grep -q './usr/bin/dbus-run-session' "$RUNNER_TEMP/rootfs-files.txt"
-          grep -q './usr/bin/Xwayland' "$RUNNER_TEMP/rootfs-files.txt"
-          test -s .work/alpine-assets/ALPINE-LICENSES.txt
-
-      - name: Upload generated Alpine rootfs payload
+      - name: Upload native ARM64 rootfs
         uses: actions/upload-artifact@v4
         with:
-          name: alpine-rootfs-payload
-          path: .work/alpine-assets/*
+          name: archlinuxarm-rootfs-aarch64
+          path: .work/archlinuxarm-rootfs-aarch64.tar.gz
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
 
   build-apk:
-    name: Build single-APK Alpine KDE desktop
-    needs: build-alpine-rootfs
-    runs-on: ubuntu-latest
+    name: Build Linuxhub 1.2.0 APK and verify embedded Arch Linux ARM64
+    runs-on: ubuntu-24.04
+    needs: build-rootfs
+    timeout-minutes: 180
     steps:
-      - name: Checkout source
+      - name: Checkout migration overlay
         uses: actions/checkout@v4
 
-      - name: Download generated Alpine rootfs payload
+      - name: Download native ARM64 rootfs
         uses: actions/download-artifact@v4
         with:
-          name: alpine-rootfs-payload
-          path: .work/alpine-assets
+          name: archlinuxarm-rootfs-aarch64
+          path: .work
 
-      - name: Verify downloaded rootfs checksum
+      - name: Verify rootfs artifact
         run: |
-          test -s .work/alpine-assets/alpine-rootfs-aarch64.tar.xz
-          sha256sum -c .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256
+          test -s .work/archlinuxarm-rootfs-aarch64.tar.gz
+          sha256sum .work/archlinuxarm-rootfs-aarch64.tar.gz
 
-      - name: Install native build dependencies
+      - name: Fetch official Linuxhub 1.2.0 source
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build meson pkg-config python3 python3-pip \
-            autoconf automake libtool gettext flex bison git curl wget zip unzip \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu \
-            libffi-dev libxml2-dev libexpat1-dev libdrm-dev libgbm-dev \
-            libegl1-mesa-dev libgles2-mesa-dev libwayland-dev wayland-protocols \
-            libxkbcommon-dev libpixman-1-dev libxcb1-dev libxcb-dri3-dev \
-            libxcb-present-dev libxcb-xfixes0-dev libxcb-render0-dev \
-            libxcb-shape0-dev libxcb-xkb-dev libxcb-composite0-dev \
-            libxcb-damage0-dev libxcb-glx0-dev libxcb-sync-dev libxcb-util0-dev \
-            libxcb-icccm4-dev libxcb-ewmh-dev libxcb-image0-dev \
-            libxcb-keysyms1-dev libxcb-xinerama0-dev libxcb-xinput-dev \
-            libxcb-xv0-dev libxcb-xtest0-dev libxcb-randr0-dev \
-            libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev \
-            libxrandr-dev libxrender-dev libxkbcommon-x11-dev
+          UPSTREAM_COMMIT=dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c
+          git init linuxhub-1.2.0
+          git -C linuxhub-1.2.0 remote add origin https://github.com/xishanp/Linuxhub.git
+          git -C linuxhub-1.2.0 fetch --depth 1 origin "$UPSTREAM_COMMIT"
+          git -C linuxhub-1.2.0 checkout --detach FETCH_HEAD
+          git -C linuxhub-1.2.0 submodule update --init --recursive
+          test "$(git -C linuxhub-1.2.0 rev-parse HEAD)" = "$UPSTREAM_COMMIT"
+          if git -C linuxhub-1.2.0 submodule status --recursive | grep -Eq "^[+-U]"; then
+            echo "::error::Linuxhub source submodule checkout is incomplete"
+            exit 1
+          fi
+          test -s linuxhub-1.2.0/gradlew
+          test -s linuxhub-1.2.0/gradle/wrapper/gradle-wrapper.jar
+          test -s linuxhub-1.2.0/app/src/main/AndroidManifest.xml
+          test -s linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          test -s linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          test -s linuxhub-1.2.0/app/src/main/jniLibs/arm64-v8a/libproot.so
+          test -s linuxhub-1.2.0/app/src/main/jniLibs/arm64-v8a/libXlorie.so
+          test -s linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/CMakeLists.txt
+          echo "Complete upstream source checkout verified: $UPSTREAM_COMMIT"
+
+      - name: Replace Ubuntu runtime with embedded Arch Linux KDE
+        run: |
+          bash scripts/prepare-linuxhub-archlinuxarm.sh \
+            "$GITHUB_WORKSPACE/linuxhub-1.2.0" \
+            "$GITHUB_WORKSPACE/.work/archlinuxarm-rootfs-aarch64.tar.gz"
+          grep -q 'archlinuxarm-rootfs-aarch64.tar.gz' \
+            linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -q 'startplasma-x11' \
+            linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          test -s linuxhub-1.2.0/app/src/main/assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz
+
+      - name: Audit generated source and native build configuration
+        run: |
+          set -eu
+          bash -n scripts/build-archlinuxarm-rootfs.sh
+          bash -n scripts/prepare-linuxhub-archlinuxarm.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          script = Path("scripts/prepare-linuxhub-archlinuxarm.sh").read_text()
+          marker = script.index("<<'PY'")
+          start = script.index(chr(10), marker) + 1
+          end = script.index(chr(10) + "PY" + chr(10), start)
+          compile(script[start:end], "prepare-linuxhub-archlinuxarm.py", "exec")
+          print("Migration generator syntax: OK")
+          PY
+          LORIE=linuxhub-1.2.0/termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp
+          test -s "$LORIE/xorgproto/include/X11/Xfuncproto.h"
+          grep -q '#define _X_HIDDEN' "$LORIE/xorgproto/include/X11/Xfuncproto.h"
+          grep -q 'execute_process(' "$LORIE/recipes/xkbcomp.cmake"
+          grep -Fq '"${CMAKE_CURRENT_BINARY_DIR}"' "$LORIE/recipes/xorgproto.cmake"
+          ! grep -q '"&&"' "$LORIE/recipes/xkbcomp.cmake"
+          grep -q 'target_compile_options(Xau PRIVATE' "$LORIE/recipes/Xau.cmake"
+          ! grep -q 'linux-aarch64' linuxhub-1.2.0/app/build.gradle.kts
+          grep -q 'noCompress += listOf("tar", "gz")' linuxhub-1.2.0/app/build.gradle.kts
+          grep -q 'startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          grep -Fq 'ContainerPaths(this@X11ServerService)' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          ! grep -Fq 'exec /usr/bin/su' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'private fun prootUserCommand' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'args[rootFlag] = "-i"' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          ! grep -Fq 'exec /bin/su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
+          grep -Fq 'ArchLinuxKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
+          grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
+          grep -Fq 'ContainerPaths(this@X11ServerService).rootfsDir' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Eq 'apt-get|dpkg|startxfce4|xfce4-' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
+          grep -Fq 'InstallComponent.ARCHLINUXARM' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
+          grep -Fq 'InstallComponent.PACMAN' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
+          ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt
+          ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt
+          ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt
+          ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt
+          grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt
+          ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'archlinuxarm-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'private fun parsePax' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/TarGzExtractor.kt
+          grep -Fq 'RootFS符号链接创建失败' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/TarGzExtractor.kt
+          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-archlinuxarm-rootfs.sh
+          grep -Fq 'plasma-x11-session-6.7.5-3-aarch64.pkg.tar.xz' scripts/build-archlinuxarm-rootfs.sh
+          grep -Fq 'IgnorePkg = plasma-workspace' scripts/build-archlinuxarm-rootfs.sh
+          test -f linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'ubuntu-24.04/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
+          ! grep -Fq 'XKB_ASSET' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
+          grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-archlinuxarm-rootfs.sh
+          echo "Generated Kotlin/CMake/Gradle migration audit: OK"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
-
       - name: Install Android SDK and NDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.0.13004108"
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865"
+          yes | sdkmanager --licenses || true
 
-      - name: Build integrated WLDroid compositor, PRoot, VirGL, and APK
-        run: bash scripts/build-wldroid-apk.sh
+      - name: Run Android unit tests
+        working-directory: linuxhub-1.2.0
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Verify final APK payload and package identity
+      - name: Build single APK
+        working-directory: linuxhub-1.2.0
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace --info 2>&1 | tee "$RUNNER_TEMP/gradle-build.log"
+
+      - name: Upload Gradle failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-diagnostic
+          path: ${{ runner.temp }}/gradle-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Verify APK contains Arch Linux rootfs and ARM64 runtime
+        working-directory: linuxhub-1.2.0
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/alpine-rootfs-aarch64.tar.xz$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^lib/arm64-v8a/libwldroid-compositor.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^lib/arm64-v8a/libproot.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^lib/arm64-v8a/libproot-loader.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^lib/arm64-v8a/libvirgl-test-server.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/drm-shim/libdrm-shim.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/netstub/libnetstub.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/ALPINE-LICENSES.txt$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/alpine-rootfs-aarch64.tar.xz.sha256$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/WLDROID-LICENSE.txt$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/WLDROID-SOURCE-NOTICE.txt$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/THIRD-PARTY-LICENSE-INDEX.txt$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/PRoot-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/wlroots-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/virglrenderer-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/talloc-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/libepoxy-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/licenses/wayland-' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/gbm-shim/libgbm.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/egl-override/libegl_override.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/drm-shim/libdrm-wrapper.so$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/xkb/symbols/us$' "$RUNNER_TEMP/apk-contents.txt"
-          grep -q '^assets/xkb/rules/evdev$' "$RUNNER_TEMP/apk-contents.txt"
-          EXPECTED_SHA=$(awk '{print $1}' .work/alpine-assets/alpine-rootfs-aarch64.tar.xz.sha256)
-          ACTUAL_SHA=$(unzip -p "$APK" assets/alpine-rootfs-aarch64.tar.xz | sha256sum | awk '{print $1}')
-          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > "$RUNNER_TEMP/apk-badging.txt"
-          grep -q "package: name='org.alpinekde.mobile'" "$RUNNER_TEMP/apk-badging.txt"
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-files.txt"
+          echo "APK entry diagnostics:"
+          grep -E '(^assets/|^lib/arm64-v8a/|archlinuxarm-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
+          for entry in \
+            assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz \
+            lib/arm64-v8a/libproot.so \
+            lib/arm64-v8a/libproot-loader.so \
+            lib/arm64-v8a/libXlorie.so \
+            assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256; do
+            if ! grep -Fxq "$entry" "$RUNNER_TEMP/apk-files.txt"; then
+              echo "::error::Missing APK entry: $entry"
+              exit 1
+            fi
+          done
+          EXPECTED=$(cat app/src/main/assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256)
+          ACTUAL=$(unzip -p "$APK" assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
+          echo "Expected rootfs SHA256: $EXPECTED"
+          echo "Actual rootfs SHA256:   $ACTUAL"
+          test "$EXPECTED" = "$ACTUAL"
           sha256sum "$APK"
           ls -lh "$APK"
 
-      - name: Upload single-APK Alpine KDE build
+      - name: Upload APK diagnostic even when verification fails
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: alpine-kde-mobile-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Linuxhub-1.2.0-ArchLinux-KDE-APK-diagnostic
+          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 3
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linuxhub-1.2.0-ArchLinux-KDE-ARM64
+          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  build-guest-mesa:
+    name: Build Adreno Turnip + Zink guest GPU drivers (ARM64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - name: Checkout migration overlay
+        uses: actions/checkout@v4
+
+      - name: Verify native ARM64 Docker build host
+        run: |
+          test "$(uname -m)" = "aarch64"
+          docker version
+          bash -n patches/build-mesa/build.sh
+
+      - name: Build Turnip and Zink for Qualcomm KGSL
+        run: |
+          bash patches/build-mesa/build.sh
+          test -s .work/guest-mesa.tar.xz
+          sha256sum .work/guest-mesa.tar.xz
+          ls -lh .work/guest-mesa.tar.xz
+
+      - name: Upload guest GPU driver bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinuxarm-guest-mesa-turnip-zink-aarch64
+          path: .work/guest-mesa.tar.xz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  validate-wayland-rootfs:
+    name: Build and validate current KDE Plasma Wayland rootfs
+    runs-on: ubuntu-24.04-arm
+    needs: build-guest-mesa
+    timeout-minutes: 180
+    steps:
+      - name: Checkout migration overlay
+        uses: actions/checkout@v4
+
+      - name: Download Adreno guest GPU drivers
+        uses: actions/download-artifact@v4
+        with:
+          name: archlinuxarm-guest-mesa-turnip-zink-aarch64
+          path: .work
+
+      - name: Install rootfs archive tools
+        run: |
+          test "$(uname -m)" = "aarch64"
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools file gnupg
+          bsdtar --version
+          xz --version
+
+      - name: Build official Arch Linux ARM + current KDE Plasma Wayland
+        run: |
+          mkdir -p .work
+          sudo env GUEST_MESA_TAR="$GITHUB_WORKSPACE/.work/guest-mesa.tar.xz" \
+            bash scripts/build-archlinuxarm-wayland-rootfs.sh
+          sudo tar --format=pax --numeric-owner --xattrs --acls -I 'gzip -1' \
+            -cf .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz \
+            -C .work/archlinuxarm-wayland-rootfs .
+          sudo sha256sum .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+          sudo du -sh .work/archlinuxarm-wayland-rootfs .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+
+      - name: Verify KDE Wayland, KWin, labwc and GPU payload
+        run: |
+          set -eu
+          ROOT=.work/archlinuxarm-wayland-rootfs
+          test -x "$ROOT/usr/bin/startplasma-wayland"
+          test -x "$ROOT/usr/bin/kwin_wayland"
+          test -x "$ROOT/usr/bin/labwc"
+          test -x "$ROOT/usr/local/bin/start-kde-wayland"
+          test -x "$ROOT/usr/local/bin/start-wayland-rescue"
+          test -x "$ROOT/opt/localdesktop-mesa/bin/vkprobe"
+          test -s "$ROOT/opt/localdesktop-mesa/env.sh"
+          grep -q 'startplasma-wayland' "$ROOT/usr/local/bin/start-kde-wayland"
+          grep -q 'wayland-0' "$ROOT/usr/local/bin/start-kde-wayland"
+          grep -q 'LIBGL_KOPPER_DRI2' "$ROOT/opt/localdesktop-mesa/env.sh"
+          echo "Wayland rootfs package and GPU-driver payload checks passed."
+
+      - name: Upload Wayland rootfs for Android compositor integration
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinuxarm-wayland-kde-rootfs-aarch64
+          path: .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3

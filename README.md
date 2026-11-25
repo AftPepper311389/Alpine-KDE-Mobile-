@@ -1,47 +1,64 @@
-# Alpine KDE Mobile
+# Arch Linux KDE Mobile
 
-A single-APK Android application intended to run a bundled Alpine Linux ARM64 root filesystem with KDE Plasma, without Root, Termux, or a separate X11 application.
+A rootless ARM64 Linux desktop for Android, based on Linuxhub 1.2.0.
 
-## Target
+## Base system
 
-- One APK contains the Alpine ARM64 rootfs, KDE Plasma, the no-root Linux runtime, Android-hosted Wayland compositor, and graphics bridge.
-- First launch extracts the bundled rootfs locally; it does not download Alpine or KDE.
-- All build and packaging work runs in GitHub Actions. No local compilation is required.
-- Android API 29+ is required by the integrated WLDroid compositor stack.
-- Hardware GPU acceleration is only considered verified after testing on the target phone.
+- Android application source: upstream [Linuxhub 1.2.0](https://github.com/xishanp/Linuxhub/tree/1.2.0), pinned to commit `dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c`.
+- Linux userspace: the official [Arch Linux ARM AArch64 root filesystem](https://archlinuxarm.org/platforms/armv8/generic).
+- Desktop: current Arch Linux ARM KDE Plasma packages, updated with `pacman -Syu`.
+- Runtime: Android + PRoot, no device root required.
+- Target package: one APK with the desktop rootfs embedded; no separate rootfs download on first launch.
 
-## Build architecture
+## Wayland desktop design
 
-The GitHub Actions workflow builds the Alpine rootfs in an ARM64 Alpine 3.24.4 container on a native GitHub ARM64 runner, then builds the Android APK on an x86-64 runner for the Android NDK toolchain. The rootfs uses the official v3.24 main and community repositories. It installs Plasma Desktop/Workspace, KWin, Konsole, Dolphin, Mesa GLES/GBM/DRI components, XWayland, and gcompat for compatibility with the graphics shims.
+The target desktop session is **KDE Plasma Wayland**:
 
-The APK is assembled from a pinned WLDroid source revision. WLDroid contributes:
+- `startplasma-wayland` starts the Plasma session.
+- `kwin` / `kwin_wayland` is KDE's actual Wayland window manager and compositor.
+- `labwc` is installed as a small secondary/rescue Wayland compositor for troubleshooting.
+- `xorg-xwayland` is retained only for legacy X11 applications.
+- The launch wrapper checks for the Android-host Wayland socket before starting Plasma. It exits with a clear diagnostic instead of producing a silent black screen when the socket is absent.
 
-- An Android-hosted Wayland compositor rendered into the app's own Android surface.
-- PRoot for running the ARM64 Alpine userspace without Root.
-- A VirGL GLES server and graphics compatibility shims.
-- Android input, display, session, and process-lifecycle integration.
+Important distinction: KWin and labwc are guest-side compositors. PRoot cannot take over Android's display device or DRM nodes. The app also needs an Android-side compositor that owns the Android window, creates the Wayland socket (normally `/tmp/wayland-0`), renders client surfaces with Android EGL/GLES, and forwards touch/keyboard/mouse input. The existing Linuxhub 1.2.0 display implementation is Lorie/X11; that Android-side Smithay compositor has **not yet been integrated into the Linuxhub Activity**. Therefore the separate Wayland rootfs build is a validated payload target, not yet a claim that the current APK can launch the Wayland desktop.
 
-The integration patch changes WLDroid's initial environment from a Debian download to importing the embedded Alpine tar.xz archive, configures the Alpine library paths, extracts the bundled XKB keyboard maps before the compositor starts, and opens directly on the KDE desktop screen. The default desktop command is `dbus-run-session -- startplasma-wayland`, which is intended to start KWin nested under the app-hosted Wayland compositor.
+The compositor integration is based on the architecture demonstrated by [Local Desktop](https://github.com/localdesktop/localdesktop.github.io): Smithay inside the Android app, with the Linux desktop running as a Wayland client inside PRoot. Its source is GPL-3.0; the GPU build files adapted from it retain the upstream attribution and license in this repository.
 
-## Current verification boundary
+## GPU acceleration
 
-CI is configured to verify that the APK contains the Alpine KDE archive, WLDroid compositor, PRoot, VirGL server, graphics shims, and the expected Android package ID. **That is build-time verification, not proof that KDE launches or that the GPU is hardware-accelerated on a phone.** PRoot/SELinux compatibility, the nested KWin session, VirGL GLES, touch/keyboard behavior, and sustained desktop stability still require on-device testing. If VirGL cannot initialize, the app may need a software-rendering fallback; software rendering will not be described as hardware acceleration.
+The GPU path has two distinct parts:
 
-## Build and artifact
+1. **Android display/compositor rendering:** the planned Smithay compositor uses Android's native EGL + OpenGL ES context on the app's window. This is hardware-backed when the Android EGL driver exposes the device GPU.
+2. **Linux guest applications:** `patches/build-mesa` builds a private Mesa installation with Freedreno/Turnip (Vulkan via Qualcomm KGSL) and Zink (OpenGL over Vulkan). The session activates it only when `vkprobe` detects a compatible Adreno GPU; otherwise the distribution's Mesa fallback remains active.
 
-Push to `main` or run **Android CI** manually in GitHub Actions. The workflow builds the Alpine rootfs, checks its package inventory and checksum, clones the pinned WLDroid source and submodules, applies the Alpine integration patch, builds the native Android components, and assembles one APK. The artifact is named `alpine-kde-mobile-debug`.
+The OPPO PHS110 uses a Qualcomm Snapdragon 695 with Adreno 619, so it is in the intended Turnip target family. Actual acceleration must still be verified on-device with:
 
-The APK is expected to be large because the complete Linux userspace and graphics/runtime components are embedded. The rootfs is not committed to Git; it is generated during CI and packed directly into the APK.
+```bash
+check-wayland-gpu
+eglinfo -B -p wayland | grep -E 'renderer|vendor'
+```
 
-## Next validation steps
+A successful Turnip probe should report a Turnip Adreno renderer; the exact result depends on the Android kernel's KGSL access and driver compatibility. The CI build verifies the driver payload, not runtime GPU operation on the phone.
 
-1. Get a clean GitHub Actions build and inspect the resulting APK contents and size.
-2. Install the APK on an Android API 29+ ARM64 phone and verify offline rootfs import.
-3. Run the PRoot Alpine shell and confirm the nested KDE Plasma session starts.
-4. Confirm VirGL reports the GLES path and validate actual Adreno/Android GPU activity; compare against software fallback.
-5. Fix any device-specific launch, touch, keyboard, audio, and power-management issues.
-6. Produce a signed release APK and a complete third-party license bundle.
+## Build outputs and validation
+
+The CI workflow now has two distinct tracks:
+
+- **Existing APK track:** still packages the current Linuxhub/Lorie X11 integration while the Android-side Wayland compositor is being ported.
+- **Wayland rootfs track:** builds the latest Arch Linux ARM KDE Plasma Wayland environment, KWin, labwc rescue compositor, and the optional Adreno Turnip/Zink driver bundle. It uploads `archlinuxarm-wayland-kde-rootfs-aarch64` for the Android compositor integration step.
+
+The Wayland rootfs builder is `scripts/build-archlinuxarm-wayland-rootfs.sh`. The existing APK builder is `scripts/build-archlinuxarm-rootfs.sh`.
+
+A successful rootfs job proves package resolution, archive creation, and payload checks. It does not prove that Plasma starts on Android until the native compositor, Android surface lifecycle, input forwarding, and on-device GPU path are integrated and tested together.
+
+## References
+
+- [Arch Linux ARM AArch64 installation](https://archlinuxarm.org/platforms/armv8/generic)
+- [Arch Linux ARM KDE Plasma packages](https://archlinuxarm.org/packages/aarch64/plasma-workspace)
+- [ArchWiki: KDE / starting Plasma Wayland](https://wiki.archlinux.org/title/KDE)
+- [Local Desktop compositor architecture](https://localdesktop.github.io/docs/developer/understanding-the-architecture/)
+- [Local Desktop GPU acceleration](https://localdesktop.github.io/docs/user/gpu-acceleration/)
 
 ## Licensing
 
-Alpine package license metadata is included with the embedded rootfs. The build also includes WLDroid's license and third-party notices. PRoot, wlroots, VirGL, Mesa, KDE, and other components retain their upstream licenses; final distribution must preserve the applicable source and license obligations.
+Linuxhub and all third-party components retain their upstream licenses. The adapted Local Desktop GPU build files are GPL-3.0; see `third_party/LOCALDESKTOP-GPL-3.0.txt` and `patches/build-mesa/UPSTREAM.md`.
