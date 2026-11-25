@@ -48,7 +48,7 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  build-pacman:
+  build-apk:
     name: Build Linuxhub 1.2.0 APK and verify embedded Arch Linux ARM64
     runs-on: ubuntu-24.04
     needs: build-rootfs
@@ -105,7 +105,7 @@ jobs:
       - name: Audit generated source and native build configuration
         run: |
           set -eu
-          sh -n scripts/build-archlinuxarm-rootfs.sh
+          bash -n scripts/build-archlinuxarm-rootfs.sh
           bash -n scripts/prepare-linuxhub-archlinuxarm.sh
           python3 - <<'PY'
           from pathlib import Path
