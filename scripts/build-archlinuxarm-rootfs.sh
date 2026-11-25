@@ -62,7 +62,7 @@ chroot "$ROOTFS" /usr/bin/pacman -Syy --noconfirm
 echo "[5/7] Installing KDE Plasma X11 and the complete desktop applications"
 chroot "$ROOTFS" /usr/bin/pacman -Syu --noconfirm --needed \
   bash sudo shadow util-linux dbus polkit \
-  plasma-desktop plasma-workspace kwin-x11 \
+  plasma-desktop plasma-workspace \
   dolphin konsole kate systemsettings \
   plasma-nm plasma-pa \
   xkeyboard-config xorg-xkbcomp xorg-xrdb xorg-xsetroot xorg-xwayland \
@@ -73,6 +73,29 @@ chroot "$ROOTFS" /usr/bin/pacman -Syu --noconfirm --needed \
   xdg-utils xdg-user-dirs networkmanager \
   fastfetch git curl wget python python-pip \
   tzdata ca-certificates procps-ng which file unzip zip
+
+echo "[5b/7] Pinning the last Arch Linux ARM Plasma X11 release (6.7.5)"
+PLASMA_MIRROR="https://mirror.iscas.ac.cn/archlinuxarm/aarch64/extra"
+PLASMA_DIR="$ROOTFS/tmp/plasma-x11-6.7.5"
+mkdir -p "$PLASMA_DIR"
+PLASMA_PACKAGES=(
+  plasma-workspace-6.7.5-3-aarch64.pkg.tar.xz
+  plasma-x11-session-6.7.5-3-aarch64.pkg.tar.xz
+  plasma-desktop-6.7.5-1-aarch64.pkg.tar.xz
+  plasma-nm-6.7.5-1-aarch64.pkg.tar.xz
+  plasma-pa-6.7.5-1-aarch64.pkg.tar.xz
+  plasma-welcome-6.7.5-1-aarch64.pkg.tar.xz
+  plasma-vault-6.7.5-1-aarch64.pkg.tar.xz
+  kactivitymanagerd-6.7.5-1-aarch64.pkg.tar.xz
+  kdeplasma-addons-6.7.5-1-aarch64.pkg.tar.xz
+)
+for package in "${PLASMA_PACKAGES[@]}"; do
+  curl --fail --location --retry 5 --retry-all-errors "$PLASMA_MIRROR/$package" -o "$PLASMA_DIR/$package"
+  curl --fail --location --retry 5 --retry-all-errors "$PLASMA_MIRROR/$package.sig" -o "$PLASMA_DIR/$package.sig"
+done
+chroot "$ROOTFS" /usr/bin/pacman -U --noconfirm /tmp/plasma-x11-6.7.5/*.pkg.tar.xz
+chroot "$ROOTFS" /usr/bin/pacman -S --noconfirm --needed kwin-x11
+chroot "$ROOTFS" /usr/bin/pacman -Q plasma-workspace plasma-x11-session plasma-desktop kwin-x11
 
 echo "[6/7] Configuring the desktop rootfs for PRoot + Lorie X11"
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run" \
