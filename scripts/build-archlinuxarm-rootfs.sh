@@ -96,6 +96,8 @@ done
 chroot "$ROOTFS" /usr/bin/pacman -U --noconfirm /tmp/plasma-x11-6.7.5/*.pkg.tar.xz
 chroot "$ROOTFS" /usr/bin/pacman -S --noconfirm --needed kwin-x11
 chroot "$ROOTFS" /usr/bin/pacman -Q plasma-workspace plasma-x11-session plasma-desktop kwin-x11
+# Prevent a routine pacman -Syu from upgrading this X11 desktop to Plasma 6.8+.
+printf '\n# Keep the Lorie-compatible Plasma X11 stack pinned to 6.7.5\nIgnorePkg = plasma-workspace plasma-x11-session plasma-desktop kwin-x11 plasma-nm plasma-pa kactivitymanagerd kdeplasma-addons plasma-welcome plasma-vault\n' >> "$ROOTFS/etc/pacman.conf"
 chroot "$ROOTFS" /usr/bin/pacman -Q plasma-workspace | grep -q '6.7.5'
 chroot "$ROOTFS" /usr/bin/pacman -Q plasma-x11-session | grep -q '6.7.5'
 chroot "$ROOTFS" /usr/bin/pacman -Q kwin-x11 | grep -q '6.7.5'
