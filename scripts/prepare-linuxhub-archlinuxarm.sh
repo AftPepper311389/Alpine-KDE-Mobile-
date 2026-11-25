@@ -254,6 +254,123 @@ def patch_manager(s):
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
 
+# The upstream extractor skipped PAX/GNU long-name records. Arch rootfs uses
+# these records for long package paths, so parse them before resolving entries.
+def patch_tar_extractor(s):
+    a = s.index('    fun extract(')
+    b = s.index('    private class CountingInputStream', a)
+    replacement = r'''    fun extract(
+        source: InputStream,
+        destination: File,
+        totalBytes: Long = -1L,
+        onProgress: (Int) -> Unit = {}
+    ) {
+        destination.mkdirs()
+        var lastPercent = -1
+        val counted = CountingInputStream(source) { bytesRead ->
+            if (totalBytes > 0L) {
+                val percent = ((bytesRead * 100L) / totalBytes).coerceIn(0L, 100L).toInt()
+                if (percent != lastPercent) {
+                    lastPercent = percent
+                    onProgress(percent)
+                }
+            }
+        }
+        val buffered = PushbackInputStream(BufferedInputStream(counted), 2)
+        val signature = ByteArray(2)
+        val count = buffered.read(signature)
+        if (count > 0) buffered.unread(signature, 0, count)
+        val archive: InputStream = if (
+            count == 2 && signature[0] == 0x1f.toByte() && signature[1] == 0x8b.toByte()
+        ) GZIPInputStream(buffered) else buffered
+        val globalPax = linkedMapOf<String, String>()
+        val localPax = linkedMapOf<String, String>()
+        var longName: String? = null
+        var longLink: String? = null
+        archive.use { tar ->
+            val header = ByteArray(BLOCK)
+            while (readBlock(tar, header)) {
+                if (header.all { it == 0.toByte() }) break
+                val headerName = text(header, 0, 100)
+                val prefix = text(header, 345, 155)
+                val headerPath = if (prefix.isEmpty()) headerName else "$prefix/$headerName"
+                val type = header[156].toInt().toChar()
+                val headerSize = octal(header, 124, 12)
+                if (type == 'x' || type == 'g' || type == 'L' || type == 'K') {
+                    check(headerSize <= Int.MAX_VALUE) { "RootFS 扩展头过大" }
+                    val payload = ByteArray(headerSize.toInt())
+                    var offset = 0
+                    while (offset < payload.size) {
+                        val read = tar.read(payload, offset, payload.size - offset)
+                        check(read > 0) { "RootFS 扩展头不完整" }
+                        offset += read
+                    }
+                    when (type) {
+                        'x' -> localPax.putAll(parsePax(payload))
+                        'g' -> globalPax.putAll(parsePax(payload))
+                        'L' -> longName = payload.toString(Charsets.UTF_8).trimEnd('\u0000', '\n', '\r')
+                        'K' -> longLink = payload.toString(Charsets.UTF_8).trimEnd('\u0000', '\n', '\r')
+                    }
+                    skipFully(tar, (BLOCK - headerSize % BLOCK) % BLOCK)
+                    continue
+                }
+                val relative = localPax["path"] ?: globalPax["path"] ?: longName ?: headerPath
+                val linkTarget = localPax["linkpath"] ?: globalPax["linkpath"] ?: longLink
+                    ?: text(header, 157, 100)
+                val size = (localPax["size"] ?: globalPax["size"])?.toLongOrNull() ?: headerSize
+                check(!relative.split('/').any { it.startsWith("PaxHeaders") || it == "PaxHeaders" }) {
+                    "归档包含非法PAX路径：$relative"
+                }
+                val output = safeTarget(destination, relative)
+                when (type) {
+                    '5' -> output.mkdirs()
+                    '2' -> {
+                        output.parentFile?.mkdirs()
+                        runCatching { Os.symlink(linkTarget, output.path) }
+                        skipFully(tar, size)
+                    }
+                    '1' -> {
+                        output.parentFile?.mkdirs()
+                        val target = safeTarget(destination, linkTarget)
+                        runCatching { Os.link(target.path, output.path) }
+                            .getOrElse {
+                                check(target.isFile) { "RootFS硬链接目标不存在：\${target.path}" }
+                                target.inputStream().use { input -> output.outputStream().use(input::copyTo) }
+                            }
+                        skipFully(tar, size)
+                    }
+                    else -> {
+                        output.parentFile?.mkdirs()
+                        output.outputStream().buffered().use { copyExactly(tar, it, size) }
+                        output.setExecutable((octal(header, 100, 8) and 0b001001001) != 0L, false)
+                    }
+                }
+                skipFully(tar, (BLOCK - size % BLOCK) % BLOCK)
+                localPax.clear()
+                longName = null
+                longLink = null
+            }
+        }
+    }
+
+    private fun parsePax(payload: ByteArray): Map<String, String> {
+        val values = linkedMapOf<String, String>()
+        payload.toString(Charsets.UTF_8).lineSequence().forEach { line ->
+            val separator = line.indexOf(' ')
+            if (separator >= 0) {
+                val field = line.substring(separator + 1).trimEnd('\u0000', '\r')
+                val equals = field.indexOf('=')
+                if (equals > 0) values[field.substring(0, equals)] = field.substring(equals + 1)
+            }
+        }
+        return values
+    }
+
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/TarGzExtractor.kt", patch_tar_extractor)
+
+
 # PRoot must switch the container's emulated identity instead of calling su.
 def patch_user_execution(s):
     old_login = '        return prootCommand("/bin/sh", "-c", script)'
