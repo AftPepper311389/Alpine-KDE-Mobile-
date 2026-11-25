@@ -36,6 +36,8 @@ test -d "$ROOTFS/usr/share/pacman/keyrings"
 
 echo "[3/7] Preparing native ARM64 chroot"
 mkdir -p "$ROOTFS/dev/pts" "$ROOTFS/proc" "$ROOTFS/sys" "$ROOTFS/run"
+# pacman disk-space checks require the chroot root itself to be a mount point.
+mount --bind "$ROOTFS" "$ROOTFS"
 rm -f "$ROOTFS/etc/resolv.conf"
 cp -L /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 mount --bind /dev "$ROOTFS/dev"
@@ -49,6 +51,7 @@ cleanup() {
   umount "$ROOTFS/proc" 2>/dev/null
   umount "$ROOTFS/dev/pts" 2>/dev/null
   umount "$ROOTFS/dev" 2>/dev/null
+  umount "$ROOTFS" 2>/dev/null
 }
 trap cleanup EXIT
 
