@@ -27,14 +27,14 @@ jobs:
         run: |
           test "$(uname -m)" = "aarch64"
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools
+          sudo apt-get install -y libarchive-tools file
           bsdtar --version
 
       - name: Build official Arch Linux ARM64 + KDE Plasma X11 rootfs
         run: |
           mkdir -p .work
           sudo bash scripts/build-archlinuxarm-rootfs.sh
-          sudo tar --format=ustar --numeric-owner --xattrs --acls -I 'gzip -1' -cf .work/archlinuxarm-rootfs-aarch64.tar.gz \
+          sudo tar --format=pax --numeric-owner --xattrs --acls -I 'gzip -1' -cf .work/archlinuxarm-rootfs-aarch64.tar.gz \
             -C .work/archlinuxarm-rootfs .
           sudo sha256sum .work/archlinuxarm-rootfs-aarch64.tar.gz
           sudo du -sh .work/archlinuxarm-rootfs .work/archlinuxarm-rootfs-aarch64.tar.gz
@@ -199,18 +199,18 @@ jobs:
       - name: Verify APK contains Arch Linux rootfs and ARM64 runtime
         working-directory: linuxhub-1.2.0
         run: |
-          APK=app/build/outputs/pacman/debug/app-debug.pacman
+          APK=app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          unzip -Z1 "$APK" > "$RUNNER_TEMP/pacman-files.txt"
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/apk-files.txt"
           echo "APK entry diagnostics:"
-          grep -E '(^assets/|^lib/arm64-v8a/|archlinuxarm-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/pacman-files.txt" | head -200 || true
+          grep -E '(^assets/|^lib/arm64-v8a/|archlinuxarm-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
           for entry in \
             assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz \
             lib/arm64-v8a/libproot.so \
             lib/arm64-v8a/libproot-loader.so \
             lib/arm64-v8a/libXlorie.so \
             assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256; do
-            if ! grep -Fxq "$entry" "$RUNNER_TEMP/pacman-files.txt"; then
+            if ! grep -Fxq "$entry" "$RUNNER_TEMP/apk-files.txt"; then
               echo "::error::Missing APK entry: $entry"
               exit 1
             fi
@@ -227,8 +227,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Linuxhub-1.2.0-Arch Linux-KDE-APK-diagnostic
-          path: linuxhub-1.2.0/app/build/outputs/pacman/debug/app-debug.pacman
+          name: Linuxhub-1.2.0-ArchLinux-KDE-APK-diagnostic
+          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: ignore
           compression-level: 0
           retention-days: 3
@@ -236,8 +236,8 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Linuxhub-1.2.0-Arch Linux-KDE-ARM64
-          path: linuxhub-1.2.0/app/build/outputs/pacman/debug/app-debug.pacman
+          name: Linuxhub-1.2.0-ArchLinux-KDE-ARM64
+          path: linuxhub-1.2.0/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
