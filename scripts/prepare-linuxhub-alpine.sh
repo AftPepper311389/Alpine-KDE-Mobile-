@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SRC="${1:?usage: prepare-linuxhub-alpine.sh SOURCE_DIR ROOTFS_TAR}"
+SRC="${1:?usage: prepare-linuxhub-archlinuxarm.sh SOURCE_DIR ROOTFS_TAR}"
 ROOTFS_TAR="${2:?missing rootfs archive}"
 ASSETS="$SRC/app/src/main/assets"
 mkdir -p "$ASSETS/rootfs"
-install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz"
-sha256sum "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
+install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz"
+sha256sum "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
 
 # Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
 rm -rf "$ASSETS/offline"
@@ -34,17 +34,17 @@ def once(s, old, new, label):
 
 # RootFS location and distribution metadata.
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
-     lambda s: s.replace('distributions/ubuntu-24.04/rootfs', 'distributions/alpine-3.21/rootfs'))
+     lambda s: s.replace('distributions/ubuntu-24.04/rootfs', 'distributions/archlinuxarm/rootfs'))
 
 def patch_models(s):
-    s = s.replace('distribution: String = "ubuntu"', 'distribution: String = "alpine"')
-    s = s.replace('version: String = "24.04"', 'version: String = "3.21"')
+    s = s.replace('distribution: String = "ubuntu"', 'distribution: String = "archlinuxarm"')
+    s = s.replace('version: String = "24.04"', 'version: String = "rolling"')
     s = s.replace('ContainerConfig(\n                distribution = values.getProperty("distribution", "ubuntu"),\n                version = values.getProperty("version", "24.04"),',
-                  'ContainerConfig(\n                distribution = values.getProperty("distribution", "alpine"),\n                version = values.getProperty("version", "3.21"),')
+                  'ContainerConfig(\n                distribution = values.getProperty("distribution", "archlinuxarm"),\n                version = values.getProperty("version", "rolling"),')
     s = s.replace('UBUNTU("Ubuntu 24.04", "基础组件", required = true, defaultSelected = true)',
-                  'ALPINE("Alpine Linux 3.21 ARM64", "基础组件", required = true, defaultSelected = true)')
+                  'ARCHLINUXARM("Arch Linux ARM64", "基础组件", required = true, defaultSelected = true)')
     s = s.replace('APT("APT", "基础组件", required = true, defaultSelected = true)',
-                  'APK("APK", "基础组件", required = true, defaultSelected = true)')
+                  'PACMAN("Pacman", "基础组件", required = true, defaultSelected = true)')
     s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
                   'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
     s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
@@ -78,42 +78,42 @@ def patch_models(s):
     return s
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch_models)
 edit("app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt",
-     lambda s: s.replace("InstallComponent.UBUNTU", "InstallComponent.ALPINE")
-                 .replace("InstallComponent.APT", "InstallComponent.APK")
+     lambda s: s.replace("InstallComponent.UBUNTU", "InstallComponent.ARCHLINUXARM")
+                 .replace("InstallComponent.APT", "InstallComponent.PACMAN")
                  .replace("InstallComponent.XFCE", "InstallComponent.KDE"))
 edit("app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt",
      lambda s: s.replace("InstallComponent.XFCE", "InstallComponent.KDE"))
 edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
      lambda s: s.replace('    val xfceGpuRecoveryMarker = File(rootfsDir, ".doro-xfce-gpu-recovery-v1")\n', ''))
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxProcessSession.kt",
-     lambda s: s.replace("ubuntu-pty-", "alpine-pty-"))
+     lambda s: s.replace("ubuntu-pty-", "archlinux-pty-"))
 
-# Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Alpine archive.
+# Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Arch Linux archive.
 def patch_manager(s):
     s = s.replace('zh_CN.UTF-8', 'C.UTF-8')
-    s = s.replace('"Ubuntu 已完成初始化"', '"Alpine 已完成初始化"')
-    s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "alpine")')
+    s = s.replace('"Ubuntu 已完成初始化"', '"Arch Linux 已完成初始化"')
+    s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "archlinuxarm")')
     s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.21")')
     s = s.replace('distribution = values.getProperty("distribution", "alpine")', 'distribution = "alpine"')
-    s = s.replace('version = values.getProperty("version", "3.21")', 'version = "3.21"')
+    s = s.replace('version = values.getProperty("version", "3.21")', 'version = "rolling"')
     s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
-                  'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11")')
+                  'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")')
     s = once(s,
         'var state = loadInitializationState()?.takeIf { it.username == username }',
-        'var state = loadInitializationState()?.takeIf { it.username == username && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11") }',
+        'var state = loadInitializationState()?.takeIf { it.username == username && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11") }',
         "discard stale Ubuntu initialization progress")
     s = once(s,
         'if (!paths.rootfsReadyMarker.isFile) {',
         'if (!paths.rootfsReadyMarker.isFile || !paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11")) {',
         "re-extract mismatched rootfs marker")
-    s = s.replace('"Ubuntu 尚未初始化"', '"Alpine 尚未初始化"')
-    s = s.replace('"Ubuntu 配置失败：', '"Alpine 配置失败：')
+    s = s.replace('"Ubuntu 尚未初始化"', '"Arch Linux 尚未初始化"')
+    s = s.replace('"Ubuntu 配置失败：', '"Arch Linux 配置失败：')
     s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
-                  'private const val ROOTFS_ASSET = "rootfs/alpine-rootfs-aarch64.tar.gz"')
+                  'private const val ROOTFS_ASSET = "rootfs/archlinuxarm-rootfs-aarch64.tar.gz"')
     s = s.replace('private const val ROOTFS_SHA256 = "0ce61ffe898bab0d0b35231c3daf1751d95c34a1963b507549c9d7dc97543e48"',
                   f'private const val ROOTFS_SHA256 = "{sha}"')
     s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
-                  'paths.rootfsReadyMarker.writeText("alpine-3.21-kde-x11\\n")')
+                  'paths.rootfsReadyMarker.writeText("archlinuxarm-kde-x11\\n")')
     s = s.replace('File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders").deleteRecursively()\n                    File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders.0").deleteRecursively()\n', '')
     old_xkb_extract = (
         '                    val x11Share = File(paths.rootfsDir, "usr/share/X11")\n'
@@ -124,7 +124,7 @@ def patch_manager(s):
         raise SystemExit("Could not locate upstream Ubuntu XKB extraction")
     s = s.replace(old_xkb_extract,
         """                    check(File(paths.rootfsDir, "usr/share/X11/xkb/rules/evdev").isFile) {
-                        "Alpine xkeyboard-config package is missing"
+                        "Arch Linux xkeyboard-config package is missing"
                     }
 """, 1)
     s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
@@ -135,27 +135,23 @@ def patch_manager(s):
     # Do not install Ubuntu-only Debian packages during first boot.
     start = s.index('            execute(InitializationStep.CREATE_CONTAINER,')
     end = s.index('            execute(InitializationStep.CREATE_USER,', start)
-    s = s[:start] + '''            execute(InitializationStep.CREATE_CONTAINER, "正在配置 Alpine KDE 桌面") {
+    s = s[:start] + '''            execute(InitializationStep.CREATE_CONTAINER, "正在配置 Arch Linux KDE 桌面") {
                 writeContainerFiles()
-                runAsRoot("command -v apk sudo bash dbus-daemon pulseaudio fcitx5 startplasma-x11 kwin_x11 dolphin konsole kate >/dev/null", "alpine-base-packages")
+                runAsRoot("command -v pacman sudo bash dbus-daemon pulseaudio fcitx5 startplasma-x11 kwin_x11 dolphin konsole kate >/dev/null", "archlinuxarm-desktop-packages")
             }
 ''' + s[end:]
 
     s = re.sub(r'execute\(InitializationStep.CONFIGURE_SUDO,.*?\n            \}', '''execute(InitializationStep.CONFIGURE_SUDO, "正在配置 sudo") {
-                runAsRoot("addgroup -S wheel 2>/dev/null || true; adduser ${shell(username)} wheel; mkdir -p /etc/sudoers.d; printf '%s ALL=(ALL:ALL) ALL\\\\n' ${shell(username)} > /etc/sudoers.d/${shell(username)}; chmod 440 /etc/sudoers.d/${shell(username)}", "configure-sudo")
+                runAsRoot("groupadd -f wheel; usermod -aG wheel ${shell(username)}; mkdir -p /etc/sudoers.d; printf '%s ALL=(ALL:ALL) ALL\\\\n' ${shell(username)} > /etc/sudoers.d/${shell(username)}; chmod 440 /etc/sudoers.d/${shell(username)}", "configure-sudo")
             }''', s, count=1, flags=re.S)
 
-    # Alpine's package index replaces Ubuntu apt configuration.
+    # Arch Linux ARM uses its official pacman mirror configuration.
     a = s.index('    private fun ensureNetworkConfig()')
     b = s.index('    private fun ensureTunaAptMirror()', a)
     s = s[:a] + '''    private fun ensureNetworkConfig() {
         File(paths.rootfsDir, "etc/resolv.conf").writeText(
             listOf("nameserver 1.1.1.1", "nameserver 8.8.8.8", "options timeout:2 attempts:3 rotate").joinToString(10.toChar().toString(), postfix = 10.toChar().toString())
         )
-        File(paths.rootfsDir, "etc/apk/repositories").apply {
-            parentFile?.mkdirs()
-            writeText(listOf("https://dl-cdn.alpinelinux.org/alpine/v3.21/main", "https://dl-cdn.alpinelinux.org/alpine/v3.21/community").joinToString(10.toChar().toString(), postfix = 10.toChar().toString()))
-        }
         File(paths.rootfsDir, "etc/gai.conf").apply {
             parentFile?.mkdirs()
             writeText("precedence ::ffff:0:0/96  100" + 10.toChar())
@@ -196,19 +192,19 @@ def patch_manager(s):
 
 ''' + s[b:]
 
-    # Hostname and first-boot user creation use Alpine's shadow tools.
+    # Hostname and first-boot user creation use Arch Linux ARM shadow tools.
     a = s.index('    private fun writeContainerFiles()')
     b = s.index('    fun loadInitializationState()', a)
     s = s[:a] + r'''    private fun writeContainerFiles() {
         ensureNetworkConfig()
-        File(paths.rootfsDir, "etc/hostname").writeText("alpine-kde\\n")
+        File(paths.rootfsDir, "etc/hostname").writeText("archlinux-kde\\n")
         val hosts = File(paths.rootfsDir, "etc/hosts")
-        hosts.writeText("127.0.0.1 localhost\\n127.0.1.1 alpine-kde\\n::1 localhost ip6-localhost\\n")
+        hosts.writeText("127.0.0.1 localhost\\n127.0.1.1 archlinux-kde\\n::1 localhost ip6-localhost\\n")
     }
 
     private fun userCreationScript(username: String, password: CharArray): String {
         val credentials = "$username:${password.concatToString()}"
-        return "id -u ${shell(username)} >/dev/null 2>&1 || adduser -D -h /home/${shell(username)} -s /bin/bash ${shell(username)}; " +
+        return "id -u ${shell(username)} >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ${shell(username)}; " +
             "mkdir -p /home/${shell(username)}; printf '%s\\n' ${shell(credentials)} | chpasswd"
     }
 
@@ -223,16 +219,16 @@ def patch_manager(s):
             "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
 
 ''' + s[b:]
-    # Alpine's util-linux-login package provides the real /bin/su executable.
+    # Arch Linux ARM's util-linux package provides the real /bin/su executable.
     # Invoke it explicitly; /usr/bin/su is only a compatibility symlink.
     s = once(s,
         'exec /usr/bin/su - ${shell(config.username)}',
         'exec /bin/su - ${shell(config.username)}',
-        "Alpine terminal login su path")
+        "Arch Linux terminal login su path")
     s = once(s,
         'exec /usr/bin/su - ${shell(config.username)} -c ${shell(script)}',
         'exec /bin/su - ${shell(config.username)} -c ${shell(script)}',
-        "Alpine KDE session su path")
+        "Arch Linux KDE session su path")
 
     # Remove unused Ubuntu/XFCE and Debian package-management code paths.
     def remove_between(text, begin, end, label):
@@ -276,7 +272,7 @@ def patch_user_execution(s):
             .redirectErrorStream(true)
             .start()
         val serviceOutput = serviceProcess.inputStream.bufferedReader().use { it.readText() }
-        check(serviceProcess.waitFor() == 0) { "Alpine system D-Bus 启动失败：$serviceOutput" }
+        check(serviceProcess.waitFor() == 0) { "Arch Linux system D-Bus 启动失败：$serviceOutput" }
         return ProcessBuilder(prootUserCommand(config.username, "/bin/bash", "-lc", script))
             .apply { environment().putAll(loginEnvironment()) }
             .redirectErrorStream(true)
@@ -407,9 +403,9 @@ for rel in [
 def patch_x11_screen(s):
     s = s.replace("XFCE会话已退出", "KDE Plasma 会话已退出")
     s = s.replace("XFCE桌面启动失败", "KDE Plasma 桌面启动失败")
-    s = s.replace("UbuntuBootSplash", "AlpineKdeBootSplash")
-    s = s.replace('contentDescription = "Ubuntu"', 'contentDescription = "Alpine KDE"')
-    s = s.replace('Text("Ubuntu",', 'Text("Alpine KDE",')
+    s = s.replace("UbuntuBootSplash", "ArchLinuxKdeBootSplash")
+    s = s.replace('contentDescription = "Ubuntu"', 'contentDescription = "Arch Linux KDE"')
+    s = s.replace('Text("Ubuntu",', 'Text("Arch Linux KDE",')
     return s
 edit("app/src/main/java/com/java/myapplication/X11Screens.kt", patch_x11_screen)
 
@@ -609,7 +605,7 @@ for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
             "app/src/main/res/values/strings.xml"]:
     p = src / rel
     if p.exists():
-        t = p.read_text().replace("Ubuntu", "Alpine").replace("ubuntu", "alpine").replace("XFCE", "KDE Plasma")
+        t = p.read_text().replace("Ubuntu", "Arch Linux").replace("ubuntu", "alpine").replace("XFCE", "KDE Plasma")
         t = t.replace('<string name="app_name">终端</string>', '<string name="app_name">Alpine KDE Mobile</string>')
         p.write_text(t)
 
@@ -635,8 +631,8 @@ if "versionCode = 69" in g:
 elif "versionCode = 124" not in g:
     raise SystemExit("Unexpected upstream versionCode")
 if 'versionName = "1.1.9Debug"' in g:
-    g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Alpine-KDE"', 1)
-elif 'versionName = "1.2.0-Alpine-KDE"' not in g:
+    g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Arch-KDE"', 1)
+elif 'versionName = "1.2.0-Arch-KDE"' not in g:
     raise SystemExit("Unexpected upstream versionName")
 p.write_text(g)
 PY
