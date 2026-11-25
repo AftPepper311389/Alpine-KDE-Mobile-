@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOTFS="${ROOTFS_DIR:-$PWD/.work/archlinuxarm-rootfs}"
-ARCH_ROOTFS_URL="https://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+ARCH_ROOTFS_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
 WORK="$(dirname "$ROOTFS")"
 ARCHIVE="$WORK/ArchLinuxARM-aarch64-latest.tar.gz"
 
@@ -14,6 +14,17 @@ echo "[1/7] Downloading the official Arch Linux ARM AArch64 root filesystem"
 curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 \
   "$ARCH_ROOTFS_URL" -o "$ARCHIVE"
 test -s "$ARCHIVE"
+curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 \
+  "$ARCH_ROOTFS_URL.sig" -o "$ARCHIVE.sig"
+GNUPGHOME="$WORK/gnupg"
+export GNUPGHOME
+mkdir -p "$GNUPGHOME"
+chmod 700 "$GNUPGHOME"
+gpg --batch --keyserver hkps://keyserver.ubuntu.com \
+  --recv-keys 68B3537F39A313B3E574D06777193F152BDBE6A6
+FINGERPRINT="$(gpg --batch --with-colons --fingerprint 68B3537F39A313B3E574D06777193F152BDBE6A6 | awk -F: '$1 == "fpr" { print $10; exit }')"
+test "$FINGERPRINT" = "68B3537F39A313B3E574D06777193F152BDBE6A6"
+gpg --batch --verify "$ARCHIVE.sig" "$ARCHIVE"
 file "$ARCHIVE"
 gzip -t "$ARCHIVE"
 
