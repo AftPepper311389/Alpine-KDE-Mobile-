@@ -258,16 +258,13 @@ def patch_manager(s):
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
 
-# PRoot must switch the container's *emulated* identity, not call Alpine su.
-# Android forbids an unprivileged app process from performing setgroups/setgid;
-# util-linux su therefore fails with "cannot set group id: Operation not permitted".
+# PRoot must switch the container's emulated identity instead of calling su.
 def patch_user_execution(s):
     old_login = '        return prootCommand("/bin/sh", "-c", script)'
     new_login = '        return prootUserCommand(config.username, "/bin/bash", "-l")'
     if old_login not in s:
         raise SystemExit("Could not locate terminal login PRoot command")
     s = s.replace(old_login, new_login, 1)
-
     old_session = '''        val startSession = DesktopCompatibility.systemServicesScript() + "; " +
             "exec /bin/su - ${shell(config.username)} -c ${shell(script)}"
         return ProcessBuilder(prootCommand("/bin/sh", "-c", startSession))
@@ -287,8 +284,6 @@ def patch_user_execution(s):
     if old_session not in s:
         raise SystemExit("Could not locate KDE session su launcher")
     s = s.replace(old_session, new_session, 1)
-
-    old_helper = '''    private fun installRuntime() {'''
     helper = '''    private fun prootUserCommand(username: String, vararg command: String): List<String> {
         require(username.matches(Regex("[a-z_][a-z0-9_-]{0,31}"))) { "无效的 Linux 用户名" }
         val args = prootCommand(*command).toMutableList()
@@ -311,16 +306,129 @@ def patch_user_execution(s):
         return args
     }
 
-    private fun installRuntime() {'''
-    if old_helper not in s:
-        raise SystemExit("Could not locate PRoot runtime helper insertion point")
-    s = s.replace(old_helper, helper, 1)
-
-    # Avoid periodic full application-directory scans after KDE has started.
-    s = s.replace('Exec=/bin/sh -c \'sleep 3; doro-sync-new-apps; while sleep 15; do doro-sync-new-apps; done\'',
-                  'Exec=/bin/sh -c \'sleep 3; doro-sync-new-apps\'')
+'''
+    marker = '    private fun installRuntime() {'
+    if marker not in s: raise SystemExit("Could not locate PRoot helper insertion point")
+    s = s.replace(marker, helper + marker, 1)
+    s = s.replace("Exec=/bin/sh -c 'sleep 3; doro-sync-new-apps; while sleep 15; do doro-sync-new-apps; done'",
+                  "Exec=/bin/sh -c 'sleep 3; doro-sync-new-apps'")
     return s
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_user_execution)
+
+# Keep the X11 service's XKB lookup aligned with the migrated Alpine rootfs.
+def patch_x11_service(s):
+    s = once(s,
+        'import android.util.Log\n',
+        'import android.util.Log\nimport com.doro.terminal.shell.linux.ContainerPaths\n',
+        'X11 service ContainerPaths import')
+    return once(s,
+        'File(filesDir, "linux/distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb")',
+        'File(ContainerPaths(this@X11ServerService).rootfsDir, "usr/share/X11/xkb")',
+        'X11 service XKB rootfs path')
+edit("app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt", patch_x11_service)
+
+# Switch the existing Lorie X11 session launcher from XFCE to KDE Plasma X11.
+def patch_desktop(s):
+    a = s.index('    fun sessionScript(')
+    b = s.index('    fun patchDesktop(', a)
+    replacement = r'''    fun sessionScript(display: String, username: String): String =
+        "export DISPLAY=${quote(display)}; " +
+            "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
+            "mkdir -p \"\$XDG_RUNTIME_DIR\"; chmod 700 \"\$XDG_RUNTIME_DIR\"; " +
+            "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb KWIN_COMPOSE=N QT_X11_NO_MITSHM=1; " +
+            "export LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=zh_CN:zh; " +
+            "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
+            "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
+            "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
+            "pkill -9 -x plasmashell 2>/dev/null || true; pkill -9 -x kwin_x11 2>/dev/null || true; sleep 1; " +
+            "exec dbus-run-session -- /usr/bin/startplasma-x11"
+
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
+# Remove the upstream GPU wrapper from desktop launchers. Alpine's package
+# commands are native; retaining the old Ubuntu helper breaks KDE app launchers.
+def patch_native_launchers(s):
+    a = s.index("    fun patchDesktop(content: String, name: String): String {")
+    b = s.index("\n    private fun quote(", a)
+    replacement = r'''    fun patchDesktop(content: String, name: String): String {
+        return content.lineSequence().joinToString("\n") { originalLine ->
+            val trimmed = originalLine.trim()
+            val repairedLine = if (
+                trimmed.isNotEmpty() &&
+                !trimmed.startsWith("#") &&
+                !trimmed.startsWith("[") &&
+                !trimmed.contains('=')
+            ) "Exec=$trimmed" else originalLine
+            if (!repairedLine.startsWith("Exec=")) return@joinToString repairedLine
+            var command = repairedLine.removePrefix("Exec=").removePrefix("/usr/local/bin/doro-gpu-run ")
+            if (name == "qq.desktop") {
+                command = command.replace("/opt/QQ/qq --no-sandbox", "/opt/QQ/qq")
+                    .replace("/opt/QQ/qq", "/opt/QQ/qq --no-sandbox")
+            }
+            "Exec=$command"
+        } + if (content.endsWith('\n')) "\n" else ""
+    }
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_native_launchers)
+
+# The KDE session no longer uses the upstream XFCE wallpaper helper.
+def remove_xfce_wallpaper(s):
+    a = s.index("    fun wallpaperScript()")
+    b = s.index("    fun sessionScript(", a)
+    return s[:a] + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", remove_xfce_wallpaper)
+
+# Remove Debian-only repair script sources; the Alpine image is fully provisioned during CI.
+for rel in [
+    "app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt",
+]:
+    (src / rel).unlink(missing_ok=True)
+
+# Drop tests that asserted removed Debian/XFCE behavior.
+for rel in [
+    "app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt",
+    # These upstream Lorie tests reference state classes absent from the pinned 1.2.0 sources.
+    # Keep the actual Lorie input implementation and remove only the orphaned test fixtures.
+    "app/src/test/java/com/termux/x11/input/PointerGestureStateTest.java",
+    "app/src/test/java/com/termux/x11/input/MouseButtonStateTest.java",
+    "app/src/test/java/com/termux/x11/input/CompositionStateTest.java",
+]:
+    (src / rel).unlink(missing_ok=True)
+
+# Update the X11 page's diagnostics and boot splash to reflect the KDE session.
+def patch_x11_screen(s):
+    s = s.replace("XFCE会话已退出", "KDE Plasma 会话已退出")
+    s = s.replace("XFCE桌面启动失败", "KDE Plasma 桌面启动失败")
+    s = s.replace("UbuntuBootSplash", "AlpineKdeBootSplash")
+    s = s.replace('contentDescription = "Ubuntu"', 'contentDescription = "Alpine KDE"')
+    s = s.replace('Text("Ubuntu",', 'Text("Alpine KDE",')
+    return s
+edit("app/src/main/java/com/java/myapplication/X11Screens.kt", patch_x11_screen)
+
+# Replace upstream XFCE-oriented assertions with KDE/X11 session checks.
+def patch_desktop_tests(s):
+    s = s.replace('assertTrue(script.contains("dbus-launch --exit-with-session"))',
+                  'assertTrue(script.contains("dbus-run-session -- /usr/bin/startplasma-x11"))')
+    s = s.replace('assertTrue(script.contains("MOZ_DISABLE_CONTENT_SANDBOX=1"))',
+                  'assertTrue(script.contains("XDG_CURRENT_DESKTOP=KDE"))')
+    s = s.replace('assertTrue(script.contains("LIBGL_ALWAYS_SOFTWARE=1"))',
+                  'assertTrue(script.contains("QT_QPA_PLATFORM=xcb"))')
+    s = s.replace('''    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''',
+                  '''        assertTrue(script.contains("KWIN_COMPOSE=N"))
+        assertTrue(!script.contains("startxfce4"))
+    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''', 1)
+    return s
+edit("app/src/test/java/com/doro/terminal/shell/linux/DesktopCompatibilityTest.kt", patch_desktop_tests)
 
 # Android's bionic libc does not expose explicit_bzero in the NDK headers.
 # Keep Xauthority credential wiping explicit and optimization-resistant.
