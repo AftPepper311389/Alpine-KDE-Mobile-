@@ -207,7 +207,7 @@ jobs:
           echo "APK entry diagnostics:"
           grep -E '(^assets/|^lib/arm64-v8a/|alpine-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/apk-files.txt" | head -200 || true
           for entry in \
-            assets/rootfs/alpine-rootfs-aarch64.tar \
+            assets/rootfs/alpine-rootfs-aarch64.tar.gz \
             lib/arm64-v8a/libproot.so \
             lib/arm64-v8a/libproot-loader.so \
             lib/arm64-v8a/libXlorie.so \
@@ -218,7 +218,7 @@ jobs:
             fi
           done
           EXPECTED=$(cat app/src/main/assets/rootfs/alpine-rootfs-aarch64.tar.gz.sha256)
-          ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar | sha256sum | awk '{print $1}')
+          ACTUAL=$(unzip -p "$APK" assets/rootfs/alpine-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
           echo "Expected rootfs SHA256: $EXPECTED"
           echo "Actual rootfs SHA256:   $ACTUAL"
           test "$EXPECTED" = "$ACTUAL"
