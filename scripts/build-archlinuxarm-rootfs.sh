@@ -96,6 +96,9 @@ done
 chroot "$ROOTFS" /usr/bin/pacman -U --noconfirm /tmp/plasma-x11-6.7.5/*.pkg.tar.xz
 chroot "$ROOTFS" /usr/bin/pacman -S --noconfirm --needed kwin-x11
 chroot "$ROOTFS" /usr/bin/pacman -Q plasma-workspace plasma-x11-session plasma-desktop kwin-x11
+chroot "$ROOTFS" /usr/bin/pacman -Q plasma-workspace | grep -q '6.7.5'
+chroot "$ROOTFS" /usr/bin/pacman -Q plasma-x11-session | grep -q '6.7.5'
+chroot "$ROOTFS" /usr/bin/pacman -Q kwin-x11 | grep -q '6.7.5'
 
 echo "[6/7] Configuring the desktop rootfs for PRoot + Lorie X11"
 mkdir -p "$ROOTFS/etc/profile.d" "$ROOTFS/etc/xdg" "$ROOTFS/tmp" "$ROOTFS/run" \
@@ -139,7 +142,8 @@ done
 test -d "$ROOTFS/usr/share/X11/xkb"
 test -f "$ROOTFS/usr/share/X11/xkb/rules/evdev"
 test -f "$ROOTFS/usr/share/X11/xkb/symbols/us"
-chroot "$ROOTFS" /usr/bin/pacman -Q plasma-desktop plasma-workspace kwin-x11 dolphin konsole kate
+chroot "$ROOTFS" /usr/bin/bash -lc 'for binary in /usr/bin/startplasma-x11 /usr/bin/kwin_x11 /usr/bin/plasmashell; do ldd "$binary" | grep -q "not found" && exit 1; done'
+chroot "$ROOTFS" /usr/bin/pacman -Q plasma-desktop plasma-workspace plasma-x11-session kwin-x11 dolphin konsole kate
 printf '%s\n' 'ROOTFS=Arch Linux ARM AArch64 official base + KDE Plasma' \
   'DESKTOP=KDE Plasma X11 / KWin X11' 'DISPLAY_BACKEND=Linuxhub Lorie X11' \
   > "$ROOTFS/etc/archlinux-kde-mobile-build-info"
