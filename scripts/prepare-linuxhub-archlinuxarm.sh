@@ -324,7 +324,9 @@ def patch_tar_extractor(s):
                     '5' -> output.mkdirs()
                     '2' -> {
                         output.parentFile?.mkdirs()
-                        runCatching { Os.symlink(linkTarget, output.path) }
+                        runCatching { Os.symlink(linkTarget, output.path) }.getOrElse {
+                            throw IllegalStateException("RootFS符号链接创建失败：$relative -> $linkTarget", it)
+                        }
                         skipFully(tar, size)
                     }
                     '1' -> {
