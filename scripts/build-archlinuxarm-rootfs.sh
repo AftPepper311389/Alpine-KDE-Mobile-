@@ -18,7 +18,7 @@ file "$ARCHIVE"
 gzip -t "$ARCHIVE"
 
 echo "[2/7] Extracting official rootfs with ACL/xattr/owner metadata"
-bsdtar --no-same-owner --same-permissions --acls --xattrs -xpf "$ARCHIVE" -C "$ROOTFS"
+bsdtar --same-permissions --acls --xattrs -xpf "$ARCHIVE" -C "$ROOTFS"
 test -x "$ROOTFS/usr/bin/pacman"
 test -f "$ROOTFS/etc/pacman.conf"
 test -d "$ROOTFS/usr/share/pacman/keyrings"
@@ -68,9 +68,8 @@ printf '%s\n' 'archlinux-kde-mobile' > "$ROOTFS/etc/hostname"
 printf '%s\n' '127.0.0.1 localhost' '127.0.1.1 archlinux-kde-mobile' \
   '::1 localhost ip6-localhost' > "$ROOTFS/etc/hosts"
 printf '%s\n' 'LANG=C.UTF-8' 'LC_ALL=C.UTF-8' > "$ROOTFS/etc/locale.conf"
-for locale in en_US.UTF-8 UTF-8 zh_CN.UTF-8 UTF-8; do
-  sed -i "s/^#\\($locale\\)/\\1/" "$ROOTFS/etc/locale.gen" 2>/dev/null || true
-done
+sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' "$ROOTFS/etc/locale.gen" 2>/dev/null || true
+sed -i 's/^#zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/' "$ROOTFS/etc/locale.gen" 2>/dev/null || true
 chroot "$ROOTFS" /usr/bin/locale-gen || true
 printf '%s\n' 'Asia/Shanghai' > "$ROOTFS/etc/timezone"
 ln -snf /usr/share/zoneinfo/Asia/Shanghai "$ROOTFS/etc/localtime"
