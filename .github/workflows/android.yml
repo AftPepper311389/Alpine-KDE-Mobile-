@@ -27,7 +27,7 @@ jobs:
         run: |
           test "$(uname -m)" = "aarch64"
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools file
+          sudo apt-get install -y libarchive-tools file gnupg
           bsdtar --version
 
       - name: Build official Arch Linux ARM64 + KDE Plasma X11 rootfs
