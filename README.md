@@ -1,42 +1,64 @@
 # Arch Linux KDE Mobile
 
-A single-APK, rootless ARM64 Linux desktop for Android.
+A rootless ARM64 Linux desktop for Android, based on Linuxhub 1.2.0.
 
-## Source base
+## Base system
 
-The Android application is based on the upstream [Linuxhub 1.2.0](https://github.com/xishanp/Linuxhub/tree/1.2.0) source at commit `dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c`. This repository contains the migration overlay and CI workflow.
+- Android application source: upstream [Linuxhub 1.2.0](https://github.com/xishanp/Linuxhub/tree/1.2.0), pinned to commit `dc90ca29ec502ff91b31d2fa4c172f885b2d3d7c`.
+- Linux userspace: the official [Arch Linux ARM AArch64 root filesystem](https://archlinuxarm.org/platforms/armv8/generic).
+- Desktop: current Arch Linux ARM KDE Plasma packages, updated with `pacman -Syu`.
+- Runtime: Android + PRoot, no device root required.
+- Target package: one APK with the desktop rootfs embedded; no separate rootfs download on first launch.
 
-## Target runtime design
+## Wayland desktop design
 
-- Use the official Arch Linux ARM AArch64 root filesystem as the base: `ArchLinuxARM-aarch64-latest.tar.gz`.
-- Install KDE Plasma and desktop applications from signed Arch Linux ARM repositories.
-- Use the native **Plasma Wayland** session (`startplasma-wayland`), not a Plasma X11 session.
-- Keep the complete Arch Linux ARM + KDE userspace embedded in one APK; no separate rootfs download on first launch.
-- Preserve rootless PRoot execution, first-launch user creation, sudo configuration, Chinese fonts/input, audio, and mobile memory limits.
-- Keep Xwayland only as an optional compatibility layer for legacy X11 applications; it is not the desktop display server.
+The target desktop session is **KDE Plasma Wayland**:
 
-## Display architecture migration
+- `startplasma-wayland` starts the Plasma session.
+- `kwin` / `kwin_wayland` is KDE's actual Wayland window manager and compositor.
+- `labwc` is installed as a small secondary/rescue Wayland compositor for troubleshooting.
+- `xorg-xwayland` is retained only for legacy X11 applications.
+- The launch wrapper checks for the Android-host Wayland socket before starting Plasma. It exits with a clear diagnostic instead of producing a silent black screen when the socket is absent.
 
-Arch Linux recommends the Plasma Wayland session; the X11 session is a separate optional package in older Plasma releases and is no longer available starting with Plasma 6.8. See the [ArchWiki KDE guide](https://wiki.archlinux.org/title/KDE) and [Wayland guide](https://wiki.archlinux.org/title/Wayland).
+Important distinction: KWin and labwc are guest-side compositors. PRoot cannot take over Android's display device or DRM nodes. The app also needs an Android-side compositor that owns the Android window, creates the Wayland socket (normally `/tmp/wayland-0`), renders client surfaces with Android EGL/GLES, and forwards touch/keyboard/mouse input. The existing Linuxhub 1.2.0 display implementation is Lorie/X11; that Android-side Smithay compositor has **not yet been integrated into the Linuxhub Activity**. Therefore the separate Wayland rootfs build is a validated payload target, not yet a claim that the current APK can launch the Wayland desktop.
 
-A Wayland desktop needs a Wayland compositor, not an X server. The existing Linuxhub 1.2.0 Android display path is Lorie/X11, so changing only the Linux package list or replacing `startplasma-x11` with `startplasma-wayland` is not sufficient. The Android side must also provide a compositor, create a Wayland socket inside the PRoot environment, render Wayland surfaces to the Android activity, and translate touch/keyboard/mouse input.
+The compositor integration is based on the architecture demonstrated by [Local Desktop](https://github.com/localdesktop/localdesktop.github.io): Smithay inside the Android app, with the Linux desktop running as a Wayland client inside PRoot. Its source is GPL-3.0; the GPU build files adapted from it retain the upstream attribution and license in this repository.
 
-**Migration status:** the current migration branch still contains the Lorie/X11 display service. The Wayland compositor integration and the corresponding removal of the X11 runtime are not yet complete. Until those pieces are implemented and tested together, this branch must not be treated as a working Wayland APK.
+## GPU acceleration
 
-The intended Wayland implementation is an in-app compositor based on the Smithay approach used by [Local Desktop](https://github.com/localdesktop/localdesktop.github.io), subject to checking and preserving its GPL-3.0 licensing and required notices. No external Termux:X11 app is part of the target design.
+The GPU path has two distinct parts:
 
-## Build and validation
+1. **Android display/compositor rendering:** the planned Smithay compositor uses Android's native EGL + OpenGL ES context on the app's window. This is hardware-backed when the Android EGL driver exposes the device GPU.
+2. **Linux guest applications:** `patches/build-mesa` builds a private Mesa installation with Freedreno/Turnip (Vulkan via Qualcomm KGSL) and Zink (OpenGL over Vulkan). The session activates it only when `vkprobe` detects a compatible Adreno GPU; otherwise the distribution's Mesa fallback remains active.
 
-The intended CI pipeline will:
+The OPPO PHS110 uses a Qualcomm Snapdragon 695 with Adreno 619, so it is in the intended Turnip target family. Actual acceleration must still be verified on-device with:
 
-1. Verify the official Arch Linux ARM AArch64 rootfs signature.
-2. Build the full KDE Plasma Wayland userspace on a native ARM64 runner.
-3. Package the rootfs into the Linuxhub 1.2.0 Android application.
-4. Build the standalone APK and verify the embedded rootfs checksum and ARM64 runtime libraries.
-5. Run static checks for the Wayland socket, compositor integration, and absence of the legacy Lorie/X11 launch path.
+```bash
+check-wayland-gpu
+eglinfo -B -p wayland | grep -E 'renderer|vendor'
+```
 
-A successful CI build proves APK assembly and payload integrity. It does not by itself prove that Plasma starts correctly or that hardware GPU acceleration works on a particular phone; those require on-device testing.
+A successful Turnip probe should report a Turnip Adreno renderer; the exact result depends on the Android kernel's KGSL access and driver compatibility. The CI build verifies the driver payload, not runtime GPU operation on the phone.
 
-## License
+## Build outputs and validation
 
-Linuxhub source and third-party components retain their upstream licenses. Any reused compositor code must retain its upstream license and copyright notices. See the upstream repositories' licenses and notices.
+The CI workflow now has two distinct tracks:
+
+- **Existing APK track:** still packages the current Linuxhub/Lorie X11 integration while the Android-side Wayland compositor is being ported.
+- **Wayland rootfs track:** builds the latest Arch Linux ARM KDE Plasma Wayland environment, KWin, labwc rescue compositor, and the optional Adreno Turnip/Zink driver bundle. It uploads `archlinuxarm-wayland-kde-rootfs-aarch64` for the Android compositor integration step.
+
+The Wayland rootfs builder is `scripts/build-archlinuxarm-wayland-rootfs.sh`. The existing APK builder is `scripts/build-archlinuxarm-rootfs.sh`.
+
+A successful rootfs job proves package resolution, archive creation, and payload checks. It does not prove that Plasma starts on Android until the native compositor, Android surface lifecycle, input forwarding, and on-device GPU path are integrated and tested together.
+
+## References
+
+- [Arch Linux ARM AArch64 installation](https://archlinuxarm.org/platforms/armv8/generic)
+- [Arch Linux ARM KDE Plasma packages](https://archlinuxarm.org/packages/aarch64/plasma-workspace)
+- [ArchWiki: KDE / starting Plasma Wayland](https://wiki.archlinux.org/title/KDE)
+- [Local Desktop compositor architecture](https://localdesktop.github.io/docs/developer/understanding-the-architecture/)
+- [Local Desktop GPU acceleration](https://localdesktop.github.io/docs/user/gpu-acceleration/)
+
+## Licensing
+
+Linuxhub and all third-party components retain their upstream licenses. The adapted Local Desktop GPU build files are GPL-3.0; see `third_party/LOCALDESKTOP-GPL-3.0.txt` and `patches/build-mesa/UPSTREAM.md`.
