@@ -54,7 +54,9 @@ trap cleanup EXIT
 
 echo "[4/7] Initializing the official Arch Linux ARM package keyring"
 chroot "$ROOTFS" /usr/bin/pacman-key --init
+chroot "$ROOTFS" /usr/bin/pacman -Sy --noconfirm archlinuxarm-keyring
 chroot "$ROOTFS" /usr/bin/pacman-key --populate archlinuxarm
+chroot "$ROOTFS" /usr/bin/pacman-key --lsign-key 68B3537F39A313B3E574D06777193F152BDBE6A6
 chroot "$ROOTFS" /usr/bin/pacman -Syy --noconfirm
 
 echo "[5/7] Installing KDE Plasma X11 and the complete desktop applications"
