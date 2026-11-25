@@ -135,12 +135,13 @@ jobs:
           ! grep -Fq 'exec /bin/su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
-          grep -Fq 'Arch LinuxKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
+          grep -Fq 'ArchLinuxKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
           grep -Fq 'ContainerPaths(this@X11ServerService).rootfsDir' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
           ! grep -Eq 'apt-get|dpkg|startxfce4|xfce4-' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
           grep -Fq 'InstallComponent.ARCHLINUXARM' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
+          grep -Fq 'InstallComponent.PACMAN' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt
           ! test -e linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt
