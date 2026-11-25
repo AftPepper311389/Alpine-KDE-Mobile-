@@ -1,4 +1,4 @@
-name: Linuxhub 1.2.0 Arch Linux KDE PACMAN
+name: Linuxhub 1.2.0 Arch Linux ARM KDE APK
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
           retention-days: 1
 
   build-pacman:
-    name: Build Linuxhub 1.2.0 PACMAN and verify embedded Arch Linux ARM64
+    name: Build Linuxhub 1.2.0 APK and verify embedded Arch Linux ARM64
     runs-on: ubuntu-24.04
     needs: build-rootfs
     timeout-minutes: 180
@@ -133,7 +133,7 @@ jobs:
           grep -Fq 'private fun prootUserCommand' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'args[rootFlag] = "-i"' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           ! grep -Fq 'exec /bin/su -' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
-          grep -Fq 'distributions/archlinuxarm-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'KDE Plasma 会话已退出' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'Arch LinuxKdeBootSplash' linuxhub-1.2.0/app/src/main/java/com/java/myapplication/X11Screens.kt
           grep -Fq 'dbus-run-session -- /usr/bin/startplasma-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt
@@ -149,7 +149,7 @@ jobs:
           ! test -e linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt
           grep -Fq 'InstallComponent.KDE' linuxhub-1.2.0/app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt
           ! grep -Fq 'distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
-          grep -Fq 'distributions/archlinuxarm-3.21/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
+          grep -Fq 'distributions/archlinuxarm/rootfs' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt
           grep -Fq 'archlinuxarm-kde-x11' linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt
           grep -Fq 'usr/share/X11/xkb/rules/evdev' scripts/build-archlinuxarm-rootfs.sh
           test -f linuxhub-1.2.0/app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt
@@ -180,7 +180,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build single PACMAN
+      - name: Build single APK
         working-directory: linuxhub-1.2.0
         run: |
           chmod +x gradlew
@@ -196,13 +196,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Verify PACMAN contains Arch Linux rootfs and ARM64 runtime
+      - name: Verify APK contains Arch Linux rootfs and ARM64 runtime
         working-directory: linuxhub-1.2.0
         run: |
-          PACMAN=app/build/outputs/pacman/debug/app-debug.pacman
-          test -s "$PACMAN"
-          unzip -Z1 "$PACMAN" > "$RUNNER_TEMP/pacman-files.txt"
-          echo "PACMAN entry diagnostics:"
+          APK=app/build/outputs/pacman/debug/app-debug.pacman
+          test -s "$APK"
+          unzip -Z1 "$APK" > "$RUNNER_TEMP/pacman-files.txt"
+          echo "APK entry diagnostics:"
           grep -E '(^assets/|^lib/arm64-v8a/|archlinuxarm-rootfs|libproot|libXlorie)' "$RUNNER_TEMP/pacman-files.txt" | head -200 || true
           for entry in \
             assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz \
@@ -211,29 +211,29 @@ jobs:
             lib/arm64-v8a/libXlorie.so \
             assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256; do
             if ! grep -Fxq "$entry" "$RUNNER_TEMP/pacman-files.txt"; then
-              echo "::error::Missing PACMAN entry: $entry"
+              echo "::error::Missing APK entry: $entry"
               exit 1
             fi
           done
           EXPECTED=$(cat app/src/main/assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256)
-          ACTUAL=$(unzip -p "$PACMAN" assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
+          ACTUAL=$(unzip -p "$APK" assets/rootfs/archlinuxarm-rootfs-aarch64.tar.gz | sha256sum | awk '{print $1}')
           echo "Expected rootfs SHA256: $EXPECTED"
           echo "Actual rootfs SHA256:   $ACTUAL"
           test "$EXPECTED" = "$ACTUAL"
-          sha256sum "$PACMAN"
-          ls -lh "$PACMAN"
+          sha256sum "$APK"
+          ls -lh "$APK"
 
-      - name: Upload PACMAN diagnostic even when verification fails
+      - name: Upload APK diagnostic even when verification fails
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Linuxhub-1.2.0-Arch Linux-KDE-PACMAN-diagnostic
+          name: Linuxhub-1.2.0-Arch Linux-KDE-APK-diagnostic
           path: linuxhub-1.2.0/app/build/outputs/pacman/debug/app-debug.pacman
           if-no-files-found: ignore
           compression-level: 0
           retention-days: 3
 
-      - name: Upload PACMAN
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Linuxhub-1.2.0-Arch Linux-KDE-ARM64
