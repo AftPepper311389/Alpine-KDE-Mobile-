@@ -261,7 +261,7 @@ edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt",
 # PRoot must switch the container's emulated identity instead of calling su.
 def patch_user_execution(s):
     old_login = '        return prootCommand("/bin/sh", "-c", script)'
-    new_login = '        return prootUserCommand(config.username, "/bin/bash", "-l")'
+    new_login = '        return prootCommand("/bin/bash", "-l")'
     if old_login not in s:
         raise SystemExit("Could not locate terminal login PRoot command")
     s = s.replace(old_login, new_login, 1)
@@ -346,7 +346,7 @@ def patch_desktop(s):
             "else unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; export LIBGL_ALWAYS_SOFTWARE=1; fi; " +
             "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
             "pkill -9 -x plasmashell 2>/dev/null || true; pkill -9 -x kwin_x11 2>/dev/null || true; sleep 1; " +
-            "exec dbus-run-session -- /usr/bin/startplasma-x11"
+            "dbus-run-session -- /usr/bin/startplasma-x11 2>&1 | tee /tmp/doro-plasma-start.log"
 
 '''
     return s[:a] + replacement + s[b:]
