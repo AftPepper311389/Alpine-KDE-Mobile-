@@ -25,6 +25,7 @@ test -d "$ROOTFS/usr/share/pacman/keyrings"
 
 echo "[3/7] Preparing native ARM64 chroot"
 mkdir -p "$ROOTFS/dev" "$ROOTFS/proc" "$ROOTFS/sys" "$ROOTFS/run"
+rm -f "$ROOTFS/etc/resolv.conf"
 cp -L /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 mount --bind /dev "$ROOTFS/dev"
 mount --bind /dev/pts "$ROOTFS/dev/pts"
@@ -85,6 +86,9 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-/tmp/.cache-$USER}"
 EOF
 printf '%s\n' '%wheel ALL=(ALL:ALL) ALL' > "$ROOTFS/etc/sudoers.d/10-wheel"
 chmod 0440 "$ROOTFS/etc/sudoers.d/10-wheel"
+# Disable the upstream image's well-known default credentials; the app creates its own user.
+chroot "$ROOTFS" /usr/bin/passwd -l root || true
+chroot "$ROOTFS" /usr/bin/passwd -l alarm || true
 # Remove hardware-specific boot services and package caches; Android supplies the kernel/display.
 chroot "$ROOTFS" /usr/bin/pacman -Scc --noconfirm || true
 rm -rf "$ROOTFS/var/cache/pacman/pkg/"* "$ROOTFS/root/.cache/"* "$ROOTFS/tmp/"* 2>/dev/null || true
