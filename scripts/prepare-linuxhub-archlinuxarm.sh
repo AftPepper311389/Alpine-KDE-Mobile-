@@ -48,7 +48,7 @@ def patch_models(s):
     s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
                   'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
     s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
-                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace", "kwin-x11"))')
+                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace", "plasma-x11-session", "kwin-x11"))')
     s = s.replace('X11("X11", "内置组件", packages = listOf("dbus-x11", "x11-xserver-utils", "xterm"))',
                   'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus"))')
     s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
