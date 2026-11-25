@@ -10,14 +10,14 @@ The Android application is built from the upstream [Linuxhub 1.2.0](https://gith
 
 - Preserve Linuxhub's Android application, PRoot runtime, and Lorie X11 display stack.
 - Start from the official Arch Linux ARM AArch64 root filesystem: `ArchLinuxARM-aarch64-latest.tar.gz`.
-- Build a full KDE Plasma X11 desktop into that rootfs on a native ARM64 runner; this is not a CLI-only rootfs.
+- Build a full KDE Plasma 6.7.5 X11 desktop into that rootfs on a native ARM64 runner; this is not a CLI-only rootfs. Plasma 6.7.5 is pinned because Plasma 6.8 removes the X11 session required by Linuxhub's Lorie display backend.
 - Include KWin X11, Dolphin, Konsole, Kate, audio, Fcitx5 Chinese input, CJK fonts, and common tools.
 - Embed the complete compressed rootfs in the APK; first launch does not download a separate system image.
 - Extract PAX/GNU long-path tar entries correctly, preserving long package paths and links.
 - Create the Linux user and configure sudo during first launch.
 - Keep Mesa shader cache and allocator defaults bounded for mobile memory use.
 
-The official Arch Linux ARM AArch64 download is a base userspace. KDE is installed from the Arch Linux ARM AArch64 package repositories during the native ARM64 image build. The resulting embedded rootfs is the full desktop environment.
+The official Arch Linux ARM AArch64 download is a base userspace. KDE is installed from signed Arch Linux ARM AArch64 packages during the native ARM64 image build. The X11-compatible Plasma 6.7.5 package set is pinned from the signed ARM package archive so it remains compatible with Lorie; the resulting embedded rootfs is the full desktop environment.
 
 ## Build
 
