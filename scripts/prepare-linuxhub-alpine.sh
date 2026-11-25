@@ -6,7 +6,7 @@ ROOTFS_TAR="${2:?missing rootfs archive}"
 ASSETS="$SRC/app/src/main/assets"
 mkdir -p "$ASSETS/rootfs"
 install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz"
-sha256sum "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/alpine-rootfs-aarch64.tar.gz.sha256"
+sha256sum "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256"
 
 # Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
 rm -rf "$ASSETS/offline"
@@ -93,8 +93,8 @@ def patch_manager(s):
     s = s.replace('zh_CN.UTF-8', 'C.UTF-8')
     s = s.replace('"Ubuntu 已完成初始化"', '"Arch Linux 已完成初始化"')
     s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "archlinuxarm")')
-    s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "3.21")')
-    s = s.replace('distribution = values.getProperty("distribution", "alpine")', 'distribution = "alpine"')
+    s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "rolling")')
+    s = s.replace('distribution = "archlinuxarm"', 'distribution = "alpine"')
     s = s.replace('version = values.getProperty("version", "3.21")', 'version = "rolling"')
     s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
                   'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")')
@@ -104,7 +104,7 @@ def patch_manager(s):
         "discard stale Ubuntu initialization progress")
     s = once(s,
         'if (!paths.rootfsReadyMarker.isFile) {',
-        'if (!paths.rootfsReadyMarker.isFile || !paths.rootfsReadyMarker.readText().contains("alpine-3.21-kde-x11")) {',
+        'if (!paths.rootfsReadyMarker.isFile || !paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")) {',
         "re-extract mismatched rootfs marker")
     s = s.replace('"Ubuntu 尚未初始化"', '"Arch Linux 尚未初始化"')
     s = s.replace('"Ubuntu 配置失败：', '"Arch Linux 配置失败：')
@@ -130,7 +130,7 @@ def patch_manager(s):
     s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
     s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
     s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
-    s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Alpine 已完成初始化" }')
+    s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Arch Linux 已完成初始化" }')
 
     # Do not install Ubuntu-only Debian packages during first boot.
     start = s.index('            execute(InitializationStep.CREATE_CONTAINER,')
@@ -160,7 +160,7 @@ def patch_manager(s):
 
 ''' + s[b:]
 
-    # No glibc-only preload bridge in the musl-based Alpine rootfs.
+    # No glibc-only preload bridge in the glibc-based Arch Linux ARM rootfs.
     s = s.replace('        ensureGetifaddrsBridge()\n', '')
     a = s.index('    private fun installRuntime()')
     b = s.index('    private fun ensureGetifaddrsBridge()', a)
@@ -311,7 +311,7 @@ def patch_user_execution(s):
     return s
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_user_execution)
 
-# Keep the X11 service's XKB lookup aligned with the migrated Alpine rootfs.
+# Keep the X11 service's XKB lookup aligned with the migrated Arch Linux ARM rootfs.
 def patch_x11_service(s):
     s = once(s,
         'import android.util.Log\n',
@@ -344,7 +344,7 @@ def patch_desktop(s):
 '''
     return s[:a] + replacement + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
-# Remove the upstream GPU wrapper from desktop launchers. Alpine's package
+# Remove the upstream GPU wrapper from desktop launchers. Arch Linux ARM's package
 # commands are native; retaining the old Ubuntu helper breaks KDE app launchers.
 def patch_native_launchers(s):
     a = s.index("    fun patchDesktop(content: String, name: String): String {")
@@ -378,7 +378,7 @@ def remove_xfce_wallpaper(s):
     return s[:a] + s[b:]
 edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", remove_xfce_wallpaper)
 
-# Remove Debian-only repair script sources; the Alpine image is fully provisioned during CI.
+# Remove Debian-only repair script sources; the Arch Linux ARM image is fully provisioned during CI.
 for rel in [
     "app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt",
     "app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt",
@@ -605,8 +605,8 @@ for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
             "app/src/main/res/values/strings.xml"]:
     p = src / rel
     if p.exists():
-        t = p.read_text().replace("Ubuntu", "Arch Linux").replace("ubuntu", "alpine").replace("XFCE", "KDE Plasma")
-        t = t.replace('<string name="app_name">终端</string>', '<string name="app_name">Alpine KDE Mobile</string>')
+        t = p.read_text().replace("Ubuntu", "Arch Linux").replace("ubuntu", "archlinuxarm").replace("XFCE", "KDE Plasma")
+        t = t.replace('<string name="app_name">终端</string>', '<string name="app_name">Arch Linux KDE Mobile</string>')
         p.write_text(t)
 
 # The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
