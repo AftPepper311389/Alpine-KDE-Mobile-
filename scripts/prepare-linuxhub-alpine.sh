@@ -258,6 +258,87 @@ def patch_manager(s):
 
 edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
 
+# PRoot must switch the container's *emulated* identity, not call Alpine su.
+# Android forbids an unprivileged app process from performing setgroups/setgid;
+# util-linux su therefore fails with "cannot set group id: Operation not permitted".
+def patch_user_execution(s):
+    old_login = '        return prootCommand("/bin/sh", "-c", script)'
+    new_login = '        return prootUserCommand(config.username, "/bin/bash", "-l")'
+    if old_login not in s:
+        raise SystemExit("Could not locate terminal login PRoot command")
+    s = s.replace(old_login, new_login, 1)
+
+    old_session = '''        val startSession = DesktopCompatibility.systemServicesScript() + "; " +
+            "exec /bin/su - ${shell(config.username)} -c ${shell(script)}"
+        return ProcessBuilder(prootCommand("/bin/sh", "-c", startSession))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()'''
+    new_session = '''        val serviceProcess = ProcessBuilder(prootCommand("/bin/sh", "-c", DesktopCompatibility.systemServicesScript()))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()
+        val serviceOutput = serviceProcess.inputStream.bufferedReader().use { it.readText() }
+        check(serviceProcess.waitFor() == 0) { "Alpine system D-Bus 启动失败：$serviceOutput" }
+        return ProcessBuilder(prootUserCommand(config.username, "/bin/bash", "-lc", script))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()'''
+    if old_session not in s:
+        raise SystemExit("Could not locate KDE session su launcher")
+    s = s.replace(old_session, new_session, 1)
+
+    old_helper = '''    private fun installRuntime() {'''
+    helper = '''    private fun prootUserCommand(username: String, vararg command: String): List<String> {
+        require(username.matches(Regex("[a-z_][a-z0-9_-]{0,31}"))) { "无效的 Linux 用户名" }
+        val args = prootCommand(*command).toMutableList()
+        val rootFlag = args.indexOf("-0")
+        check(rootFlag >= 0) { "PRoot root identity flag is missing" }
+        args[rootFlag] = "-i"
+        args.add(rootFlag + 1, "1000:1000")
+        for (index in args.indices) {
+            args[index] = when (args[index]) {
+                "/root" -> "/home/$username"
+                "HOME=/root" -> "HOME=/home/$username"
+                "USER=root" -> "USER=$username"
+                else -> args[index]
+            }
+        }
+        val userIndex = args.indexOf("USER=$username")
+        check(userIndex >= 0) { "PRoot user environment is missing" }
+        args.add(userIndex + 1, "LOGNAME=$username")
+        args.add(userIndex + 2, "SHELL=/bin/bash")
+        return args
+    }
+
+    private fun installRuntime() {'''
+    if old_helper not in s:
+        raise SystemExit("Could not locate PRoot runtime helper insertion point")
+    s = s.replace(old_helper, helper, 1)
+
+    # Avoid periodic full application-directory scans after KDE has started.
+    s = s.replace('Exec=/bin/sh -c \'sleep 3; doro-sync-new-apps; while sleep 15; do doro-sync-new-apps; done\'',
+                  'Exec=/bin/sh -c \'sleep 3; doro-sync-new-apps\'')
+    return s
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_user_execution)
+
+# Avoid forcing Turnip/Zink on every phone. The current Zink path is the likely
+# cause of runaway GPU work on devices whose Android driver stack is incompatible.
+def patch_kde_rendering(s):
+    old = '''            "if [ \\"\\$(cat /etc/doro-gpu-enabled 2>/dev/null)\\" = \\"1\\" ]; then " +
+            "export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink; " +
+            "export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json; " +
+            "export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json; " +
+            "unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE; " +
+            "else unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; export LIBGL_ALWAYS_SOFTWARE=1; fi; " +'''
+    new = '''            "unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES LIBGL_DRI3_DISABLE; " +
+            "export LIBGL_ALWAYS_SOFTWARE=1; " +'''
+    if old not in s:
+        # Session generator is authored in this migration script, so guard the expected exact block.
+        raise SystemExit("Could not locate KDE Zink/Turnip environment block")
+    return s.replace(old, new, 1)
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_kde_rendering)
+
 # Keep the X11 service's XKB lookup aligned with the migrated Alpine rootfs.
 def patch_x11_service(s):
     s = once(s,
