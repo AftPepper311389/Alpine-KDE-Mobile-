@@ -1,0 +1,654 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SRC="${1:?usage: prepare-linuxhub-archlinuxarm.sh SOURCE_DIR ROOTFS_TAR}"
+ROOTFS_TAR="${2:?missing rootfs archive}"
+ASSETS="$SRC/app/src/main/assets"
+mkdir -p "$ASSETS/rootfs"
+install -m 0644 "$ROOTFS_TAR" "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz"
+sha256sum "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz" | awk '{print $1}' > "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256"
+
+# Remove unused Ubuntu/XFCE offline payloads from Linuxhub 1.2.0.
+rm -rf "$ASSETS/offline"
+rm -f "$ASSETS/x11/xkb-data.tar" "$ASSETS/desktop/ubuntu-wallpaper.jpg" "$ASSETS/desktop/ubuntu-wallpaper.png" "$ASSETS/desktop/whitesur-xfce.tar"
+
+python3 - "$SRC" "$ASSETS/rootfs/archlinuxarm-rootfs-aarch64.tar.gz.sha256" <<'PY'
+from pathlib import Path
+import re, sys
+
+src = Path(sys.argv[1])
+sha = Path(sys.argv[2]).read_text().strip()
+
+def edit(rel, fn):
+    p = src / rel
+    s = p.read_text()
+    out = fn(s)
+    if out == s:
+        raise SystemExit(f"Patch made no change: {rel}")
+    p.write_text(out)
+
+def once(s, old, new, label):
+    if old not in s:
+        raise SystemExit(f"Could not locate patch point: {label}")
+    return s.replace(old, new, 1)
+
+# RootFS location and distribution metadata.
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
+     lambda s: s.replace('distributions/ubuntu-24.04/rootfs', 'distributions/archlinuxarm/rootfs'))
+
+def patch_models(s):
+    s = s.replace('distribution: String = "ubuntu"', 'distribution: String = "archlinuxarm"')
+    s = s.replace('version: String = "24.04"', 'version: String = "rolling"')
+    s = s.replace('ContainerConfig(\n                distribution = values.getProperty("distribution", "ubuntu"),\n                version = values.getProperty("version", "24.04"),',
+                  'ContainerConfig(\n                distribution = values.getProperty("distribution", "archlinuxarm"),\n                version = values.getProperty("version", "rolling"),')
+    s = s.replace('UBUNTU("Ubuntu 24.04", "基础组件", required = true, defaultSelected = true)',
+                  'ARCHLINUXARM("Arch Linux ARM64", "基础组件", required = true, defaultSelected = true)')
+    s = s.replace('APT("APT", "基础组件", required = true, defaultSelected = true)',
+                  'PACMAN("Pacman", "基础组件", required = true, defaultSelected = true)')
+    s = s.replace('DESKTOP("XFCE 图形桌面", "桌面环境", defaultSelected = true)',
+                  'DESKTOP("KDE Plasma 6 桌面", "桌面环境", defaultSelected = true)')
+    s = s.replace('XFCE("XFCE 桌面", "内置组件", packages = listOf("xfce4", "xfce4-goodies"))',
+                  'KDE("KDE Plasma 6 / KWin X11", "内置组件", packages = listOf("plasma-desktop", "plasma-workspace", "kwin-x11"))')
+    s = s.replace('X11("X11", "内置组件", packages = listOf("dbus-x11", "x11-xserver-utils", "xterm"))',
+                  'X11("Lorie X11 显示服务", "内置组件", packages = listOf("dbus"))')
+    s = s.replace('FILE_MANAGER("文件管理器", "内置组件", packages = listOf("thunar", "mousepad"))',
+                  'FILE_MANAGER("Dolphin 文件管理器", "内置组件", packages = listOf("dolphin", "konsole", "kate"))')
+    s = s.replace('PYTHON("Python", "基础组件", defaultSelected = true, packages = listOf("python3", "python3-pip", "python3-venv"))',
+                  'PYTHON("Python 3", "基础组件", defaultSelected = true, packages = listOf("python", "python-pip"))')
+    s = s.replace('CHINESE("中文语言环境", "基础组件", defaultSelected = true, packages = listOf("locales", "language-pack-zh-hans", "fonts-noto-cjk"))',
+                  'CHINESE("中文字体与输入", "基础组件", defaultSelected = true, packages = listOf("noto-fonts-cjk", "fcitx5", "fcitx5-chinese-addons"))')
+    s = s.replace('FIREFOX("Mozilla Firefox", "内置应用")',
+                  'FIREFOX("Mozilla Firefox", "内置应用", supported = false)')
+    s = s.replace('PYTHON_AI("Python AI 环境", "AI 开发", packages = listOf("python3-numpy", "python3-scipy", "python3-pandas", "python3-sklearn"))',
+                  'PYTHON_AI("Python AI 环境", "AI 开发", supported = false)')
+    s = s.replace('JUPYTER("JupyterLab", "AI 开发", packages = listOf("jupyter-notebook"))',
+                  'JUPYTER("JupyterLab", "AI 开发", supported = false)')
+    s = s.replace('NODE("Node.js", "开发环境", packages = listOf("nodejs", "npm"))',
+                  'NODE("Node.js", "开发环境", supported = false)')
+    s = s.replace('JAVA("Java", "开发环境", packages = listOf("default-jdk"))',
+                  'JAVA("Java", "开发环境", supported = false)')
+    s = s.replace('GCC("GCC/G++", "开发环境", packages = listOf("build-essential"))',
+                  'GCC("GCC/G++", "开发环境", supported = false)')
+    s = s.replace('CMAKE("CMake", "开发环境", packages = listOf("cmake"))',
+                  'CMAKE("CMake", "开发环境", supported = false)')
+    s = s.replace('RUST("Rust", "开发环境", packages = listOf("rustc", "cargo"))',
+                  'RUST("Rust", "开发环境", supported = false)')
+    s = s.replace('GO("Go", "开发环境", packages = listOf("golang-go"))',
+                  'GO("Go", "开发环境", supported = false)')
+    return s
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerModels.kt", patch_models)
+edit("app/src/main/java/com/doro/terminal/shell/linux/SetupCatalog.kt",
+     lambda s: s.replace("InstallComponent.UBUNTU", "InstallComponent.ARCHLINUXARM")
+                 .replace("InstallComponent.APT", "InstallComponent.PACMAN")
+                 .replace("InstallComponent.XFCE", "InstallComponent.KDE"))
+edit("app/src/test/java/com/doro/terminal/shell/linux/SetupCatalogTest.kt",
+     lambda s: s.replace("InstallComponent.XFCE", "InstallComponent.KDE"))
+edit("app/src/main/java/com/doro/terminal/shell/linux/ContainerPaths.kt",
+     lambda s: s.replace('    val xfceGpuRecoveryMarker = File(rootfsDir, ".doro-xfce-gpu-recovery-v1")\n', ''))
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxProcessSession.kt",
+     lambda s: s.replace("ubuntu-pty-", "archlinux-pty-"))
+
+# Keep the proven Android/PRoot/Lorie X11 framework; replace Ubuntu deployment with the embedded Arch Linux archive.
+def patch_manager(s):
+    s = s.replace('zh_CN.UTF-8', 'C.UTF-8')
+    s = s.replace('"Ubuntu 已完成初始化"', '"Arch Linux 已完成初始化"')
+    s = s.replace('distribution = values.getProperty("distribution", "ubuntu")', 'distribution = values.getProperty("distribution", "archlinuxarm")')
+    s = s.replace('version = values.getProperty("version", "24.04")', 'version = values.getProperty("version", "rolling")')
+    s = s.replace('distribution = "archlinuxarm"', 'distribution = "archlinuxarm"')
+    s = s.replace('version = "rolling"', 'version = "rolling"')
+    s = s.replace('initialized = values.getProperty("initialized").toBoolean()',
+                  'initialized = values.getProperty("initialized").toBoolean() && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")')
+    s = once(s,
+        'var state = loadInitializationState()?.takeIf { it.username == username }',
+        'var state = loadInitializationState()?.takeIf { it.username == username && paths.rootfsReadyMarker.isFile && paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11") }',
+        "discard stale Ubuntu initialization progress")
+    s = once(s,
+        'if (!paths.rootfsReadyMarker.isFile) {',
+        'if (!paths.rootfsReadyMarker.isFile || !paths.rootfsReadyMarker.readText().contains("archlinuxarm-kde-x11")) {',
+        "re-extract mismatched rootfs marker")
+    s = s.replace('"Ubuntu 尚未初始化"', '"Arch Linux 尚未初始化"')
+    s = s.replace('"Ubuntu 配置失败：', '"Arch Linux 配置失败：')
+    s = s.replace('private const val ROOTFS_ASSET = "rootfs/ubuntu-base-24.04.4-base-arm64.tar"',
+                  'private const val ROOTFS_ASSET = "rootfs/archlinuxarm-rootfs-aarch64.tar.gz"')
+    s = s.replace('private const val ROOTFS_SHA256 = "0ce61ffe898bab0d0b35231c3daf1751d95c34a1963b507549c9d7dc97543e48"',
+                  f'private const val ROOTFS_SHA256 = "{sha}"')
+    s = s.replace('paths.rootfsReadyMarker.writeText("ubuntu-24.04\\n")',
+                  'paths.rootfsReadyMarker.writeText("archlinuxarm-kde-x11\\n")')
+    s = s.replace('File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders").deleteRecursively()\n                    File(paths.rootfsDir, "etc/dpkg/dpkg.cfg.d/PaxHeaders.0").deleteRecursively()\n', '')
+    old_xkb_extract = (
+        '                    val x11Share = File(paths.rootfsDir, "usr/share/X11")\n'
+        '                    verifyAsset(XKB_ASSET, XKB_SHA256)\n'
+        '                    context.assets.open(XKB_ASSET).use { TarGzExtractor.extract(it, x11Share) }\n'
+    )
+    if old_xkb_extract not in s:
+        raise SystemExit("Could not locate upstream Ubuntu XKB extraction")
+    s = s.replace(old_xkb_extract,
+        """                    check(File(paths.rootfsDir, "usr/share/X11/xkb/rules/evdev").isFile) {
+                        "Arch Linux xkeyboard-config package is missing"
+                    }
+""", 1)
+    s = s.replace('private const val XKB_ASSET = "x11/xkb-data.tar"\n', '')
+    s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
+    s = re.sub(r'private const val XKB_SHA256 = "[0-9a-f]{64}"\n', '', s)
+    s = s.replace('check(!isInitialized()) { "Ubuntu 已完成初始化" }', 'check(!isInitialized()) { "Arch Linux 已完成初始化" }')
+
+    # Do not install Ubuntu-only Debian packages during first boot.
+    start = s.index('            execute(InitializationStep.CREATE_CONTAINER,')
+    end = s.index('            execute(InitializationStep.CREATE_USER,', start)
+    s = s[:start] + '''            execute(InitializationStep.CREATE_CONTAINER, "正在配置 Arch Linux KDE 桌面") {
+                writeContainerFiles()
+                runAsRoot("command -v pacman sudo bash dbus-daemon pulseaudio fcitx5 startplasma-x11 kwin_x11 dolphin konsole kate >/dev/null", "archlinuxarm-desktop-packages")
+            }
+''' + s[end:]
+
+    s = re.sub(r'execute\(InitializationStep.CONFIGURE_SUDO,.*?\n            \}', '''execute(InitializationStep.CONFIGURE_SUDO, "正在配置 sudo") {
+                runAsRoot("groupadd -f wheel; usermod -aG wheel ${shell(username)}; mkdir -p /etc/sudoers.d; printf '%s ALL=(ALL:ALL) ALL\\\\n' ${shell(username)} > /etc/sudoers.d/${shell(username)}; chmod 440 /etc/sudoers.d/${shell(username)}", "configure-sudo")
+            }''', s, count=1, flags=re.S)
+
+    # Arch Linux ARM uses its official pacman mirror configuration.
+    a = s.index('    private fun ensureNetworkConfig()')
+    b = s.index('    private fun ensureTunaAptMirror()', a)
+    s = s[:a] + '''    private fun ensureNetworkConfig() {
+        File(paths.rootfsDir, "etc/resolv.conf").writeText(
+            listOf("nameserver 1.1.1.1", "nameserver 8.8.8.8", "options timeout:2 attempts:3 rotate").joinToString(10.toChar().toString(), postfix = 10.toChar().toString())
+        )
+        File(paths.rootfsDir, "etc/gai.conf").apply {
+            parentFile?.mkdirs()
+            writeText("precedence ::ffff:0:0/96  100" + 10.toChar())
+        }
+    }
+
+''' + s[b:]
+
+    # No glibc-only preload bridge in the glibc-based Arch Linux ARM rootfs.
+    s = s.replace('        ensureGetifaddrsBridge()\n', '')
+    a = s.index('    private fun installRuntime()')
+    b = s.index('    private fun ensureGetifaddrsBridge()', a)
+    s = s[:a] + '''    private fun installRuntime() {
+        paths.prootTmpDir.mkdirs()
+        check(paths.prootTmpDir.isDirectory && paths.prootTmpDir.canWrite()) { "PRoot临时目录不可写" }
+        check(paths.proot.isFile && paths.proot.canExecute()) { "PRoot 原生运行时不可用" }
+        check(paths.loader.isFile) { "PRoot Loader 不可用" }
+        paths.libraryDir.mkdirs()
+        copyAsset("runtime/arm64-v8a/lib/libtalloc.so.2", File(paths.libraryDir, "libtalloc.so.2"))
+        copyAsset("runtime/arm64-v8a/lib/libandroid-shmem.so", File(paths.libraryDir, "libandroid-shmem.so"))
+    }
+
+''' + s[b:]
+
+    # Rootfs already contains the desktop and utilities; don't run XFCE/Ubuntu repair paths.
+    s = s.replace('        installGpuAwareDesktopWrappers()\n', '')
+    s = s.replace('        ensureDesktopWallpaper(config.username)\n', '')
+    s = s.replace('        ensureDesktopShortcuts(config.username)\n', '')
+    s = s.replace('        ensureFirefoxCompatibility(config.username)\n', '')
+
+    # Fastfetch is installed in the image, not as a Debian package on first launch.
+    a = s.index('    private fun ensureStartupMaintenance(')
+    b = s.index('    fun loginCommand(', a)
+    s = s[:a] + '''    private fun ensureStartupMaintenance(username: String) {
+        ensureFetchScript()
+        ensureTerminalProfile(username)
+    }
+
+''' + s[b:]
+
+    # Hostname and first-boot user creation use Arch Linux ARM shadow tools.
+    a = s.index('    private fun writeContainerFiles()')
+    b = s.index('    fun loadInitializationState()', a)
+    s = s[:a] + r'''    private fun writeContainerFiles() {
+        ensureNetworkConfig()
+        File(paths.rootfsDir, "etc/hostname").writeText("archlinux-kde\\n")
+        val hosts = File(paths.rootfsDir, "etc/hosts")
+        hosts.writeText("127.0.0.1 localhost\\n127.0.1.1 archlinux-kde\\n::1 localhost ip6-localhost\\n")
+    }
+
+    private fun userCreationScript(username: String, password: CharArray): String {
+        val credentials = "$username:${password.concatToString()}"
+        return "id -u ${shell(username)} >/dev/null 2>&1 || useradd -m -s /bin/bash -G wheel ${shell(username)}; " +
+            "mkdir -p /home/${shell(username)}; printf '%s\\n' ${shell(credentials)} | chpasswd"
+    }
+
+    private fun environmentScript(username: String): String =
+        "mkdir -p /etc/profile.d /home/${shell(username)} && " +
+            "printf '%s\\n' 'export LANG=C.UTF-8' 'export LC_ALL=C.UTF-8' 'export LANGUAGE=zh_CN:zh' 'export MALLOC_ARENA_MAX=2' 'export MESA_SHADER_CACHE_MAX_SIZE=128M' > /etc/profile.d/mobile.sh && " +
+            "ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && " +
+            "printf '%s\\n' 'Asia/Shanghai' > /etc/timezone && " +
+            "touch /home/${shell(username)}/.bashrc && " +
+            "grep -qF 'export PS1=' /home/${shell(username)}/.bashrc || " +
+            "printf '%s\\n' 'export PS1=\\\\u@\\\\h:\\\\w# ' >> /home/${shell(username)}/.bashrc; " +
+            "chown -R ${shell(username)}:${shell(username)} /home/${shell(username)}"
+
+''' + s[b:]
+    # Arch Linux ARM's util-linux package provides the real /bin/su executable.
+    # Invoke it explicitly; /usr/bin/su is only a compatibility symlink.
+    s = once(s,
+        'exec /usr/bin/su - ${shell(config.username)}',
+        'exec /bin/su - ${shell(config.username)}',
+        "Arch Linux terminal login su path")
+    s = once(s,
+        'exec /usr/bin/su - ${shell(config.username)} -c ${shell(script)}',
+        'exec /bin/su - ${shell(config.username)} -c ${shell(script)}',
+        "Arch Linux KDE session su path")
+
+    # Remove unused Ubuntu/XFCE and Debian package-management code paths.
+    def remove_between(text, begin, end, label):
+        if begin not in text or end not in text:
+            raise SystemExit(f"Could not locate obsolete block: {label}")
+        a = text.index(begin)
+        b = text.index(end, a)
+        return text[:a] + text[b:]
+    s = remove_between(s, '    private fun ensureTunaAptMirror()', '    private fun ensureFetchScript()', "Ubuntu APT helpers")
+    s = remove_between(s, '    private fun ensureDesktopWallpaper(', '    fun stopDesktopServices()', "XFCE desktop customizations")
+    s = remove_between(s, '    private fun ensureGetifaddrsBridge()', '    private fun copyAsset(', "unused Ubuntu getifaddrs bridge")
+    s = remove_between(s, '    private fun installMesaGpuRuntime()', '    private fun createContainerProgress(', "offline Debian and GPU installer")
+    s = s.replace('private const val XKB_SHA256 = "ef3e89f59155df159d528531fe7f61dd141ffbe4b91b870e6f96510f0c630b58"\n', '')
+    a = s.index('        private val bridgeLock = Any()')
+    b = s.index('        private const val ROOTFS_ASSET', a)
+    s = s[:a] + s[b:]
+    a = s.index('        private const val OFFLINE_CORE_ASSET')
+    b = s.index('        private const val COMMAND_TIMEOUT_MS', a)
+    s = s[:a] + s[b:]
+    s = s.replace('        private const val COMMAND_TIMEOUT_MS',
+                  '        private const val FETCH_SCRIPT_ASSET = "desktop/doro-fetch.sh"\n        private const val COMMAND_TIMEOUT_MS', 1)
+    return s
+
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_manager)
+
+# PRoot must switch the container's emulated identity instead of calling su.
+def patch_user_execution(s):
+    old_login = '        return prootCommand("/bin/sh", "-c", script)'
+    new_login = '        return prootCommand("/bin/bash", "-l")'
+    if old_login not in s:
+        raise SystemExit("Could not locate terminal login PRoot command")
+    s = s.replace(old_login, new_login, 1)
+    old_session = '''        val startSession = DesktopCompatibility.systemServicesScript() + "; " +
+            "exec /bin/su - ${shell(config.username)} -c ${shell(script)}"
+        return ProcessBuilder(prootCommand("/bin/sh", "-c", startSession))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()'''
+    new_session = '''        val serviceProcess = ProcessBuilder(prootCommand("/bin/sh", "-c", DesktopCompatibility.systemServicesScript()))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()
+        val serviceOutput = serviceProcess.inputStream.bufferedReader().use { it.readText() }
+        check(serviceProcess.waitFor() == 0) { "Arch Linux system D-Bus 启动失败：$serviceOutput" }
+        return ProcessBuilder(prootUserCommand(config.username, "/bin/bash", "-lc", script))
+            .apply { environment().putAll(loginEnvironment()) }
+            .redirectErrorStream(true)
+            .start()'''
+    if old_session not in s:
+        raise SystemExit("Could not locate KDE session su launcher")
+    s = s.replace(old_session, new_session, 1)
+    helper = '''    private fun prootUserCommand(username: String, vararg command: String): List<String> {
+        require(username.matches(Regex("[a-z_][a-z0-9_-]{0,31}"))) { "无效的 Linux 用户名" }
+        val args = prootCommand(*command).toMutableList()
+        val rootFlag = args.indexOf("-0")
+        check(rootFlag >= 0) { "PRoot root identity flag is missing" }
+        args[rootFlag] = "-i"
+        args.add(rootFlag + 1, "1000:1000")
+        for (index in args.indices) {
+            args[index] = when (args[index]) {
+                "/root" -> "/home/$username"
+                "HOME=/root" -> "HOME=/home/$username"
+                "USER=root" -> "USER=$username"
+                else -> args[index]
+            }
+        }
+        val userIndex = args.indexOf("USER=$username")
+        check(userIndex >= 0) { "PRoot user environment is missing" }
+        args.add(userIndex + 1, "LOGNAME=$username")
+        args.add(userIndex + 2, "SHELL=/bin/bash")
+        return args
+    }
+
+'''
+    marker = '    private fun installRuntime() {'
+    if marker not in s: raise SystemExit("Could not locate PRoot helper insertion point")
+    s = s.replace(marker, helper + marker, 1)
+    s = s.replace("Exec=/bin/sh -c 'sleep 3; doro-sync-new-apps; while sleep 15; do doro-sync-new-apps; done'",
+                  "Exec=/bin/sh -c 'sleep 3; doro-sync-new-apps'")
+    return s
+edit("app/src/main/java/com/doro/terminal/shell/linux/LinuxContainerManager.kt", patch_user_execution)
+
+# Keep the X11 service's XKB lookup aligned with the migrated Arch Linux ARM rootfs.
+def patch_x11_service(s):
+    s = once(s,
+        'import android.util.Log\n',
+        'import android.util.Log\nimport com.doro.terminal.shell.linux.ContainerPaths\n',
+        'X11 service ContainerPaths import')
+    return once(s,
+        'File(filesDir, "linux/distributions/ubuntu-24.04/rootfs/usr/share/X11/xkb")',
+        'File(ContainerPaths(this@X11ServerService).rootfsDir, "usr/share/X11/xkb")',
+        'X11 service XKB rootfs path')
+edit("app/src/main/java/com/doro/terminal/shell/x11/X11ServerService.kt", patch_x11_service)
+
+# Switch the existing Lorie X11 session launcher from XFCE to KDE Plasma X11.
+def patch_desktop(s):
+    a = s.index('    fun sessionScript(')
+    b = s.index('    fun patchDesktop(', a)
+    replacement = r'''    fun sessionScript(display: String, username: String): String =
+        "export DISPLAY=${quote(display)}; " +
+            "export XDG_RUNTIME_DIR=/tmp/runtime-${quote(username)}; " +
+            "mkdir -p \"\$XDG_RUNTIME_DIR\"; chmod 700 \"\$XDG_RUNTIME_DIR\"; " +
+            "export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=KDE XDG_SESSION_DESKTOP=KDE DESKTOP_SESSION=plasma KDE_SESSION_VERSION=6 KDE_FULL_SESSION=true QT_QPA_PLATFORM=xcb KWIN_COMPOSE=N QT_X11_NO_MITSHM=1; " +
+            "export LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=zh_CN:zh; " +
+            "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
+            "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
+            "unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; " +
+            "export LIBGL_ALWAYS_SOFTWARE=1 QT_XCB_GL_INTEGRATION=none QT_QUICK_BACKEND=software KWIN_COMPOSE=N KWIN_X11_NO_SYNC_TO_VBLANK=1; " +
+            "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
+            "pkill -9 -x plasmashell 2>/dev/null || true; pkill -9 -x kwin_x11 2>/dev/null || true; sleep 1; " +
+            "set -o pipefail; : > /tmp/doro-plasma-start.log; fcitx5 -d >/tmp/doro-fcitx5.log 2>&1 || true; dbus-run-session -- /usr/bin/startplasma-x11 2>&1 | tee -a /tmp/doro-plasma-start.log"
+
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_desktop)
+# Remove the upstream GPU wrapper from desktop launchers. Arch Linux ARM's package
+# commands are native; retaining the old Ubuntu helper breaks KDE app launchers.
+def patch_native_launchers(s):
+    a = s.index("    fun patchDesktop(content: String, name: String): String {")
+    b = s.index("\n    private fun quote(", a)
+    replacement = r'''    fun patchDesktop(content: String, name: String): String {
+        return content.lineSequence().joinToString("\n") { originalLine ->
+            val trimmed = originalLine.trim()
+            val repairedLine = if (
+                trimmed.isNotEmpty() &&
+                !trimmed.startsWith("#") &&
+                !trimmed.startsWith("[") &&
+                !trimmed.contains('=')
+            ) "Exec=$trimmed" else originalLine
+            if (!repairedLine.startsWith("Exec=")) return@joinToString repairedLine
+            var command = repairedLine.removePrefix("Exec=").removePrefix("/usr/local/bin/doro-gpu-run ")
+            if (name == "qq.desktop") {
+                command = command.replace("/opt/QQ/qq --no-sandbox", "/opt/QQ/qq")
+                    .replace("/opt/QQ/qq", "/opt/QQ/qq --no-sandbox")
+            }
+            "Exec=$command"
+        } + if (content.endsWith('\n')) "\n" else ""
+    }
+'''
+    return s[:a] + replacement + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", patch_native_launchers)
+
+# The KDE session no longer uses the upstream XFCE wallpaper helper.
+def remove_xfce_wallpaper(s):
+    a = s.index("    fun wallpaperScript()")
+    b = s.index("    fun sessionScript(", a)
+    return s[:a] + s[b:]
+edit("app/src/main/java/com/doro/terminal/shell/linux/DesktopCompatibility.kt", remove_xfce_wallpaper)
+
+# Remove Debian-only repair script sources; the Arch Linux ARM image is fully provisioned during CI.
+for rel in [
+    "app/src/main/java/com/doro/terminal/shell/linux/FactoryPackageRepairScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/OfflineInstallScript.kt",
+    "app/src/main/java/com/doro/terminal/shell/linux/VendorAppsRepairScript.kt",
+]:
+    (src / rel).unlink(missing_ok=True)
+
+# Drop tests that asserted removed Debian/XFCE behavior.
+for rel in [
+    "app/src/test/java/com/doro/terminal/shell/linux/FactoryPackageRepairScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/OfflineInstallScriptTest.kt",
+    "app/src/test/java/com/doro/terminal/shell/linux/XfceWallpaperTest.kt",
+    # These upstream Lorie tests reference state classes absent from the pinned 1.2.0 sources.
+    # Keep the actual Lorie input implementation and remove only the orphaned test fixtures.
+    "app/src/test/java/com/termux/x11/input/PointerGestureStateTest.java",
+    "app/src/test/java/com/termux/x11/input/MouseButtonStateTest.java",
+    "app/src/test/java/com/termux/x11/input/CompositionStateTest.java",
+]:
+    (src / rel).unlink(missing_ok=True)
+
+# Update the X11 page's diagnostics and boot splash to reflect the KDE session.
+def patch_x11_screen(s):
+    s = s.replace("XFCE会话已退出", "KDE Plasma 会话已退出")
+    s = s.replace("XFCE桌面启动失败", "KDE Plasma 桌面启动失败")
+    s = s.replace("UbuntuBootSplash", "ArchLinuxKdeBootSplash")
+    s = s.replace('contentDescription = "Ubuntu"', 'contentDescription = "Arch Linux KDE"')
+    s = s.replace('Text("Ubuntu",', 'Text("Arch Linux KDE",')
+    return s
+edit("app/src/main/java/com/java/myapplication/X11Screens.kt", patch_x11_screen)
+
+# Replace upstream XFCE-oriented assertions with KDE/X11 session checks.
+def patch_desktop_tests(s):
+    s = s.replace('assertTrue(script.contains("dbus-launch --exit-with-session"))',
+                  'assertTrue(script.contains("dbus-run-session -- /usr/bin/startplasma-x11"))')
+    s = s.replace('assertTrue(script.contains("MOZ_DISABLE_CONTENT_SANDBOX=1"))',
+                  'assertTrue(script.contains("XDG_CURRENT_DESKTOP=KDE"))')
+    s = s.replace('assertTrue(script.contains("LIBGL_ALWAYS_SOFTWARE=1"))',
+                  'assertTrue(script.contains("QT_QPA_PLATFORM=xcb"))')
+    s = s.replace('''    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''',
+                  '''        assertTrue(script.contains("KWIN_COMPOSE=N"))
+        assertTrue(!script.contains("startxfce4"))
+    }
+
+    @Test fun desktopLaunchersKeepNativeCommands()''', 1)
+    return s
+edit("app/src/test/java/com/doro/terminal/shell/linux/DesktopCompatibilityTest.kt", patch_desktop_tests)
+
+# Android's bionic libc does not expose explicit_bzero in the NDK headers.
+# Keep Xauthority credential wiping explicit and optimization-resistant.
+def patch_xau_secure_wipe(s):
+    if "static void xau_secure_clear" not in s:
+        s = once(s,
+            "#include <stdlib.h>\n",
+            "#include <stdlib.h>\n\nstatic void xau_secure_clear(void *buffer, size_t length) {\n    volatile unsigned char *p = (volatile unsigned char *) buffer;\n    while (length-- > 0) *p++ = 0;\n}\n",
+            "Xau secure-clear helper")
+    s = s.replace("explicit_bzero (", "xau_secure_clear (")
+    return s
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/libxau/AuDispose.c", patch_xau_secure_wipe)
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/libxau/AuRead.c", patch_xau_secure_wipe)
+
+# Repair the upstream Lorie native build's missing Xfuncproto header.
+xfuncproto = r"""#ifndef _XFUNCPROTO_H_
+#define _XFUNCPROTO_H_
+#ifndef NeedFunctionPrototypes
+#define NeedFunctionPrototypes 1
+#endif
+#ifndef NeedVarargsPrototypes
+#define NeedVarargsPrototypes 1
+#endif
+#ifndef NeedNestedPrototypes
+#define NeedNestedPrototypes 1
+#endif
+#ifndef _Xconst
+#define _Xconst const
+#endif
+#ifndef FUNCPROTO
+#define FUNCPROTO 15
+#endif
+#ifndef NeedWidePrototypes
+#if defined(__linux__) || defined(__ANDROID__)
+#define NeedWidePrototypes 0
+#else
+#define NeedWidePrototypes 1
+#endif
+#endif
+#ifndef _XFUNCPROTOBEGIN
+#ifdef __cplusplus
+#define _XFUNCPROTOBEGIN extern "C" {
+#define _XFUNCPROTOEND }
+#else
+#define _XFUNCPROTOBEGIN
+#define _XFUNCPROTOEND
+#endif
+#endif
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#ifndef __has_extension
+#define __has_extension(x) 0
+#endif
+#if __has_attribute(__sentinel__) || (defined(__GNUC__) && __GNUC__ >= 4)
+#define _X_SENTINEL(x) __attribute__((__sentinel__(x)))
+#else
+#define _X_SENTINEL(x)
+#endif
+#if __has_attribute(visibility) || (defined(__GNUC__) && __GNUC__ >= 4)
+#define _X_EXPORT __attribute__((visibility("default")))
+#define _X_HIDDEN __attribute__((visibility("hidden")))
+#define _X_INTERNAL __attribute__((visibility("internal")))
+#else
+#define _X_EXPORT
+#define _X_HIDDEN
+#define _X_INTERNAL
+#endif
+#if defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 303)
+#define _X_LIKELY(x) __builtin_expect(!!(x), 1)
+#define _X_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define _X_LIKELY(x) (x)
+#define _X_UNLIKELY(x) (x)
+#endif
+#if __has_attribute(__cold__) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 403))
+#define _X_COLD __attribute__((__cold__))
+#else
+#define _X_COLD
+#endif
+#if __has_attribute(deprecated) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 301))
+#define _X_DEPRECATED __attribute__((deprecated))
+#else
+#define _X_DEPRECATED
+#endif
+#if __has_attribute(noreturn) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 205))
+#define _X_NORETURN __attribute__((noreturn))
+#else
+#define _X_NORETURN
+#endif
+#if __has_attribute(__format__) || (defined(__GNUC__) && ((__GNUC__ * 100 + __GNUC_MINOR__) >= 203))
+#define _X_ATTRIBUTE_PRINTF(x,y) __attribute__((__format__(__printf__,x,y)))
+#else
+#define _X_ATTRIBUTE_PRINTF(x,y)
+#endif
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define _X_INLINE inline
+#elif defined(__GNUC__)
+#define _X_INLINE __inline__
+#else
+#define _X_INLINE
+#endif
+#ifndef _X_RESTRICT_KYWD
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L && !defined(__cplusplus)
+#define _X_RESTRICT_KYWD restrict
+#elif defined(__GNUC__)
+#define _X_RESTRICT_KYWD __restrict__
+#else
+#define _X_RESTRICT_KYWD
+#endif
+#endif
+#define _X_UNUSED __attribute__((__unused__))
+#define _X_NOTSAN
+#define _X_NONSTRING
+#endif
+"""
+header = src / "termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/xorgproto/include/X11/Xfuncproto.h"
+header.parent.mkdir(parents=True, exist_ok=True)
+if not header.exists():
+    header.write_text(xfuncproto)
+else:
+    existing = header.read_text()
+    if "_X_HIDDEN" not in existing:
+        header.write_text(xfuncproto)
+
+# Fix xkbcomp's host utility rule: CMake COMMAND does not interpret shell && or > tokens.
+def patch_xkbcomp(s):
+    old = """add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND "/usr/bin/gcc" "-o" "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
+            "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        COMMENT "Generating source code (ks_tables.h)"
+        VERBATIM)"""
+    new = """find_program(HOST_C_COMPILER NAMES cc gcc REQUIRED)
+execute_process(
+        COMMAND "${HOST_C_COMPILER}" -o "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c"
+        RESULT_VARIABLE MAKEKEYS_COMPILE_RESULT)
+if(NOT MAKEKEYS_COMPILE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to build host makekeys utility")
+endif()
+execute_process(
+        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/makekeys" keysymdef.h XF86keysym.h Sunkeysym.h DECkeysym.h HPkeysym.h
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
+        OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        RESULT_VARIABLE MAKEKEYS_RESULT)
+if(NOT MAKEKEYS_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to generate ks_tables.h")
+endif()"""
+    return once(s, old, new, "xkbcomp host makekeys rule")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xkbcomp.cmake", patch_xkbcomp)
+
+# Expose generated X11 headers and the Xtrans symlink from the CMake build tree.
+def patch_xorgproto(s):
+    return once(s,
+        'target_include_directories(xorgproto INTERFACE "xorgproto/include")',
+        'target_include_directories(xorgproto INTERFACE "xorgproto/include" "${CMAKE_CURRENT_BINARY_DIR}")',
+        "xorgproto generated include directory")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/xorgproto.cmake", patch_xorgproto)
+
+# Correct a copied target name in the upstream Xau recipe.
+def patch_xau(s):
+    return once(s,
+        'target_compile_options(Xdmcp PRIVATE ${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        'target_compile_options(Xau PRIVATE ${common_compile_options} "-D_GNU_SOURCE=1" "-DHAVE_EXPLICIT_BZERO" "-fPIC")',
+        "Xau compile options target")
+edit("termux_ubuntu_rebuild/termux_x11_source/lorie/src/main/cpp/recipes/Xau.cmake", patch_xau)
+
+# Hostname and hosts Kotlin escape sequences are written correctly by patch_manager above.
+
+# Update visible distro branding while preserving the upstream application structure.
+for rel in ["app/src/main/java/com/java/myapplication/MainActivity.kt",
+            "app/src/main/res/values/strings.xml"]:
+    p = src / rel
+    if p.exists():
+        t = p.read_text().replace("Ubuntu", "Arch Linux").replace("ubuntu", "archlinuxarm").replace("XFCE", "KDE Plasma")
+        t = t.replace('<string name="app_name">终端</string>', '<string name="app_name">Arch Linux KDE Mobile</string>')
+        p.write_text(t)
+
+# The embedded rootfs is gzip-compressed and must be kept uncompressed by APK packaging.
+p = src / "app/build.gradle.kts"
+g = p.read_text()
+# Upstream forces ARM64 AAPT2 for an on-device build. APK compilation runs on
+# x86_64 CI, so use the Android Gradle Plugin's native host AAPT2 instead.
+start = g.find("// Force use of ARM64 binaries for AAPT2 in Proot environment")
+end = g.find(chr(10) + "}" + chr(10), start) if start >= 0 else -1
+if start < 0 or end < 0:
+    raise SystemExit("Could not locate upstream ARM64-only AAPT2 override")
+g = g[:start] + g[end + 3:]
+removed = 1
+if removed != 1 or "linux-aarch64" in g:
+    raise SystemExit("Could not safely remove upstream ARM64-only AAPT2 override")
+if 'noCompress += listOf("tar")' in g:
+    g = g.replace('noCompress += listOf("tar")', 'noCompress += listOf("tar", "gz")', 1)
+elif 'noCompress += listOf("tar", "gz")' not in g:
+    raise SystemExit("Could not locate Android rootfs noCompress configuration")
+if "versionCode = 69" in g:
+    g = g.replace("versionCode = 69", "versionCode = 124", 1)
+elif "versionCode = 124" not in g:
+    raise SystemExit("Unexpected upstream versionCode")
+if 'versionName = "1.1.9Debug"' in g:
+    g = g.replace('versionName = "1.1.9Debug"', 'versionName = "1.2.0-Arch-KDE"', 1)
+elif 'versionName = "1.2.0-Arch-KDE"' not in g:
+    raise SystemExit("Unexpected upstream versionName")
+p.write_text(g)
+PY
+
+
+# The upstream tag contains a developer-local Gradle distribution URL.
+# Replace it with the official Gradle 9.1.0 distribution for CI builds.
+python3 - "$SRC/gradle/wrapper/gradle-wrapper.properties" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+old = "distributionUrl=file:///root/gradle/gradle-9.1.0-bin.zip"
+new = "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.1.0-bin.zip"
+if old not in s and new not in s:
+    raise SystemExit("Unexpected Gradle wrapper distribution URL")
+p.write_text(s.replace(old, new))
+PY
+grep -Fq 'distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-bin.zip' "$SRC/gradle/wrapper/gradle-wrapper.properties"
