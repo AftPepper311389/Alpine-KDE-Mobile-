@@ -57,6 +57,7 @@ chroot "$ROOTFS" /usr/bin/pacman-key --init
 chroot "$ROOTFS" /usr/bin/pacman -Sy --noconfirm archlinuxarm-keyring
 chroot "$ROOTFS" /usr/bin/pacman-key --populate archlinuxarm
 chroot "$ROOTFS" /usr/bin/pacman-key --lsign-key 68B3537F39A313B3E574D06777193F152BDBE6A6
+printf '\\nLocalFileSigLevel = Required\\n' >> "$ROOTFS/etc/pacman.conf"
 chroot "$ROOTFS" /usr/bin/pacman -Syy --noconfirm
 
 echo "[5/7] Installing KDE Plasma X11 and the complete desktop applications"
