@@ -339,11 +339,8 @@ def patch_desktop(s):
             "export LANG=C.UTF-8 LC_ALL=C.UTF-8 LANGUAGE=zh_CN:zh; " +
             "export XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx; " +
             "export MALLOC_ARENA_MAX=2 MESA_SHADER_CACHE_MAX_SIZE=128M NO_AT_BRIDGE=1; " +
-            "if [ \"\\$(cat /etc/doro-gpu-enabled 2>/dev/null)\" = \"1\" ]; then " +
-            "export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink; " +
-            "export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json VK_DRIVER_FILES=/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json; " +
-            "unset LIBGL_ALWAYS_SOFTWARE LIBGL_DRI3_DISABLE; " +
-            "else unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; export LIBGL_ALWAYS_SOFTWARE=1; fi; " +
+            "unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER VK_ICD_FILENAMES VK_DRIVER_FILES; " +
+            "export LIBGL_ALWAYS_SOFTWARE=1 QT_XCB_GL_INTEGRATION=none QT_QUICK_BACKEND=software KWIN_COMPOSE=N KWIN_X11_NO_SYNC_TO_VBLANK=1; " +
             "unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID SESSION_MANAGER; " +
             "pkill -9 -x plasmashell 2>/dev/null || true; pkill -9 -x kwin_x11 2>/dev/null || true; sleep 1; " +
             "dbus-run-session -- /usr/bin/startplasma-x11 2>&1 | tee /tmp/doro-plasma-start.log"
