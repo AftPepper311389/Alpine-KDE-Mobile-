@@ -35,7 +35,7 @@ test -f "$ROOTFS/etc/pacman.conf"
 test -d "$ROOTFS/usr/share/pacman/keyrings"
 
 echo "[3/7] Preparing native ARM64 chroot"
-mkdir -p "$ROOTFS/dev" "$ROOTFS/proc" "$ROOTFS/sys" "$ROOTFS/run"
+mkdir -p "$ROOTFS/dev/pts" "$ROOTFS/proc" "$ROOTFS/sys" "$ROOTFS/run"
 rm -f "$ROOTFS/etc/resolv.conf"
 cp -L /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 mount --bind /dev "$ROOTFS/dev"
