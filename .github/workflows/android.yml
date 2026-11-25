@@ -246,3 +246,92 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  build-guest-mesa:
+    name: Build Adreno Turnip + Zink guest GPU drivers (ARM64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - name: Checkout migration overlay
+        uses: actions/checkout@v4
+
+      - name: Verify native ARM64 Docker build host
+        run: |
+          test "$(uname -m)" = "aarch64"
+          docker version
+          bash -n patches/build-mesa/build.sh
+
+      - name: Build Turnip and Zink for Qualcomm KGSL
+        run: |
+          bash patches/build-mesa/build.sh
+          test -s .work/guest-mesa.tar.xz
+          sha256sum .work/guest-mesa.tar.xz
+          ls -lh .work/guest-mesa.tar.xz
+
+      - name: Upload guest GPU driver bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinuxarm-guest-mesa-turnip-zink-aarch64
+          path: .work/guest-mesa.tar.xz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  validate-wayland-rootfs:
+    name: Build and validate current KDE Plasma Wayland rootfs
+    runs-on: ubuntu-24.04-arm
+    needs: build-guest-mesa
+    timeout-minutes: 180
+    steps:
+      - name: Checkout migration overlay
+        uses: actions/checkout@v4
+
+      - name: Download Adreno guest GPU drivers
+        uses: actions/download-artifact@v4
+        with:
+          name: archlinuxarm-guest-mesa-turnip-zink-aarch64
+          path: .work
+
+      - name: Install rootfs archive tools
+        run: |
+          test "$(uname -m)" = "aarch64"
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools file gnupg
+          bsdtar --version
+          xz --version
+
+      - name: Build official Arch Linux ARM + current KDE Plasma Wayland
+        run: |
+          mkdir -p .work
+          sudo env GUEST_MESA_TAR="$GITHUB_WORKSPACE/.work/guest-mesa.tar.xz" \
+            bash scripts/build-archlinuxarm-wayland-rootfs.sh
+          sudo tar --format=pax --numeric-owner --xattrs --acls -I 'gzip -1' \
+            -cf .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz \
+            -C .work/archlinuxarm-wayland-rootfs .
+          sudo sha256sum .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+          sudo du -sh .work/archlinuxarm-wayland-rootfs .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+
+      - name: Verify KDE Wayland, KWin, labwc and GPU payload
+        run: |
+          set -eu
+          ROOT=.work/archlinuxarm-wayland-rootfs
+          test -x "$ROOT/usr/bin/startplasma-wayland"
+          test -x "$ROOT/usr/bin/kwin_wayland"
+          test -x "$ROOT/usr/bin/labwc"
+          test -x "$ROOT/usr/local/bin/start-kde-wayland"
+          test -x "$ROOT/usr/local/bin/start-wayland-rescue"
+          test -x "$ROOT/opt/localdesktop-mesa/bin/vkprobe"
+          test -s "$ROOT/opt/localdesktop-mesa/env.sh"
+          grep -q 'startplasma-wayland' "$ROOT/usr/local/bin/start-kde-wayland"
+          grep -q 'wayland-0' "$ROOT/usr/local/bin/start-kde-wayland"
+          grep -q 'LIBGL_KOPPER_DRI2' "$ROOT/opt/localdesktop-mesa/env.sh"
+          echo "Wayland rootfs package and GPU-driver payload checks passed."
+
+      - name: Upload Wayland rootfs for Android compositor integration
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinuxarm-wayland-kde-rootfs-aarch64
+          path: .work/archlinuxarm-wayland-rootfs-aarch64.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
